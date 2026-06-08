@@ -631,6 +631,12 @@ function createDownloadCardUI(task) {
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
+                    <button class="btn-retry" id="btn-retry-${task.id}" onclick="retryDownload('${task.id}')" title="Retry Download" style="display: none; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); cursor: pointer; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; padding: 3px; transition: all 0.2s;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="progress-container">
@@ -664,6 +670,49 @@ function cancelDownload(downloadId) {
             showToast("Cancellation request sent", "warning");
         } else {
             showToast(`Cancellation error: ${res.error}`, "error");
+        }
+    });
+}
+
+function retryDownload(downloadId) {
+    const task = downloadsStore[downloadId];
+    if (!task) return;
+
+    const retryBtn = document.getElementById(`btn-retry-${downloadId}`);
+    const cancelBtn = document.getElementById(`btn-cancel-${downloadId}`);
+    if (retryBtn) retryBtn.style.display = 'none';
+    if (cancelBtn) {
+        cancelBtn.style.display = 'flex';
+        cancelBtn.disabled = false;
+        cancelBtn.style.opacity = 1;
+    }
+
+    // Reset task state
+    task.status = 'queued';
+    task.progress = 0;
+    task.speed = 'Pending...';
+    task.eta = '--:--';
+    task.error = null;
+
+    updateDownloadProgress(downloadId, 0, 'Pending...', '--:--', 'queued');
+
+    // Get current bitrate settings from video configuration if available
+    const bitrateSelect = document.getElementById('video-audio-bitrate');
+    const audioBitrate = bitrateSelect ? bitrateSelect.value : '192';
+
+    window.pywebview.api.start_download(downloadId, task.url, {
+        quality: task.quality,
+        subtitle: task.subtitle || null,
+        audio_bitrate: audioBitrate,
+        format_type: task.format_type,
+        out_format: task.out_format,
+        title: task.title,
+        thumbnail: task.thumbnail
+    }).then(res => {
+        if (!res.success) {
+            updateDownloadProgress(downloadId, 0, 'Error', '00:00', 'error', res.error);
+        } else {
+            updateBadgeCount(1);
         }
     });
 }
@@ -720,9 +769,19 @@ function updateDownloadProgress(downloadId, percent, speed, eta, status, errorMs
         }
     }
 
+    if (errBox && status !== 'error') {
+        errBox.style.display = 'none';
+    }
+
     // Hide cancel button if download is finalized
     if (['completed', 'error', 'cancelled'].includes(status)) {
         if (cancelBtn) cancelBtn.style.display = 'none';
+        
+        // Show retry button for failed downloads
+        const retryBtn = document.getElementById(`btn-retry-${downloadId}`);
+        if (retryBtn) {
+            retryBtn.style.display = status === 'error' ? 'flex' : 'none';
+        }
     }
 
     if (badge) {
@@ -1442,6 +1501,17 @@ function parseSpeedString(speedStr) {
     }
 }
 
+function formatSpeedLocal(speed_bytes) {
+    if (!speed_bytes) return "0 KB/s";
+    if (speed_bytes < 1024) {
+        return `${speed_bytes.toFixed(0)} B/s`;
+    } else if (speed_bytes < 1024 * 1024) {
+        return `${(speed_bytes / 1024).toFixed(1)} KB/s`;
+    } else {
+        return `${(speed_bytes / (1024 * 1024)).toFixed(1)} MB/s`;
+    }
+}
+
 function drawBandwidthChart() {
     const canvas = document.getElementById('bandwidth-chart');
     if (!canvas) return;
@@ -1456,12 +1526,12 @@ function drawBandwidthChart() {
     const maxVal = Math.max(...speedHistory, 1024 * 1024); // min 1MB/s scale
 
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7f00ff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, 'rgba(127, 0, 255, 0.15)');
+    gradient.addColorStop(0, 'rgba(127, 0, 255, 0.12)');
     gradient.addColorStop(1, 'rgba(127, 0, 255, 0)');
 
     ctx.beginPath();
@@ -1484,6 +1554,17 @@ function drawBandwidthChart() {
     ctx.lineTo(0, height);
     ctx.fillStyle = gradient;
     ctx.fill();
+
+    // Draw compact informative speed overlays
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = '9px system-ui, -apple-system, sans-serif';
+    ctx.textBaseline = 'top';
+    
+    const currentSpeed = speedHistory[speedHistory.length - 1];
+    const peakSpeed = Math.max(...speedHistory);
+    
+    ctx.fillText(`Live: ${formatSpeedLocal(currentSpeed)}`, 4, 2);
+    ctx.fillText(`Peak: ${formatSpeedLocal(peakSpeed)}`, width - 68, 2);
 }
 
 // Bandwidth check interval

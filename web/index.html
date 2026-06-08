@@ -372,13 +372,12 @@
                     <div class="downloads-container">
                         <!-- Active list -->
                         <div class="card">
-                            <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
+                            <div class="card-header" style="flex-wrap: wrap; gap: 1rem; align-items: center;">
                                 <div>
                                     <h2>Active Downloads</h2>
-                                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Live Network Speed Graph</p>
                                 </div>
-                                <div class="chart-container" style="flex: 1; min-width: 180px; max-width: 320px; height: 40px;">
-                                    <canvas id="bandwidth-chart" height="40" style="width: 100%; height: 40px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);"></canvas>
+                                <div class="chart-container" style="flex: 1; min-width: 180px; max-width: 280px; height: 28px; display: flex; align-items: center;">
+                                    <canvas id="bandwidth-chart" height="28" style="width: 100%; height: 28px; background: transparent;"></canvas>
                                 </div>
                                 <button class="btn btn-secondary btn-small" onclick="clearCompletedDownloads()">Clear Completed</button>
                             </div>

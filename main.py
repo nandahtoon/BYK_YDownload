@@ -523,8 +523,13 @@ class YTDownloaderAPI:
                     f"updateDownloadProgress({json.dumps(download_id)}, 100, 'Merging/Finalizing...', '00:00', 'processing', '', '', {json.dumps(raw_log)})"
                 )
 
+        def postprocessor_hook(d):
+            if d.get('status') == 'finished':
+                if d.get('filename'):
+                    last_file_path[0] = d.get('filename')
+
         try:
-            self._downloader.download(url, options, progress_hook)
+            self._downloader.download(url, options, progress_hook, postprocessor_hook)
             
             # Format size of completed file
             file_size_str = ""

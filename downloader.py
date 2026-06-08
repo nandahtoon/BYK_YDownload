@@ -144,7 +144,7 @@ class YTDownloader:
             except Exception as e:
                 raise Exception(f"Failed to fetch video details: {str(e)}")
 
-    def download(self, url, options, progress_callback):
+    def download(self, url, options, progress_callback, postprocessor_callback=None):
         """
         Downloads a video with given options and reports progress.
         Runs synchronously. Should be called inside a background thread.
@@ -164,6 +164,9 @@ class YTDownloader:
             'retries': 10,         # Retry failed connections
             'fragment_retries': 10 # Retry segment/fragment failures
         }
+        
+        if postprocessor_callback:
+            ydl_opts['postprocessor_hooks'] = [postprocessor_callback]
         
         # Cookies authentication
         cookies_file = options.get('cookies_file')
