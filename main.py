@@ -660,6 +660,23 @@ class YTDownloaderAPI:
         except Exception as e:
             self._evaluate_js(f"updateEngineStatus('error', {json.dumps(f'Update failed: {str(e)}')})")
 
+    def minimize_window(self):
+        if self._window:
+            self._window.minimize()
+
+    def toggle_maximize_window(self):
+        if self._window:
+            if getattr(self, '_is_maximized', False):
+                self._window.restore()
+                self._is_maximized = False
+            else:
+                self._window.maximize()
+                self._is_maximized = True
+
+    def close_window(self):
+        if self._window:
+            self._window.destroy()
+
 # Start webview app
 def main():
     try:
@@ -684,7 +701,9 @@ def main():
             width=1100,
             height=750,
             min_size=(850, 600),
-            background_color='#0b0f19'
+            background_color='#0b0f19',
+            frameless=True,
+            easy_drag=False
         )
         
         def on_closing():
@@ -696,6 +715,15 @@ def main():
             time.sleep(0.3)
 
         api.set_window(window)
+        
+        def on_maximized():
+            api._is_maximized = True
+            
+        def on_restored():
+            api._is_maximized = False
+
+        window.events.maximized += on_maximized
+        window.events.restored += on_restored
         window.events.closing += on_closing
         webview.start(debug=not getattr(sys, 'frozen', False), icon=icon_path)
     except Exception as e:

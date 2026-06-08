@@ -896,3 +896,22 @@ function toggleEmbedThumbnail(checked) {
         }
     });
 }
+
+// Window control API wrappers
+function minimizeWindow() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.minimize_window();
+    }
+}
+
+function toggleMaximizeWindow() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.toggle_maximize_window();
+    }
+}
+
+function closeWindow() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.close_window();
+    }
+}

@@ -70,12 +70,22 @@ body {
 /* Layout Structure */
 .app-container {
     display: flex;
+    flex-direction: column;
     width: 100vw;
     height: 100vh;
     background: 
         radial-gradient(circle at 80% 20%, var(--mesh-glow-1) 0%, transparent 40%),
         radial-gradient(circle at 20% 80%, var(--mesh-glow-2) 0%, transparent 40%),
         #07090e;
+    overflow: hidden;
+}
+
+.main-body {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    height: calc(100% - 34px);
+    overflow: hidden;
 }
 
 /* Sidebar */
@@ -1271,3 +1281,77 @@ body.theme-amber {
     background-color: var(--primary-color);
     box-shadow: 0 0 8px var(--primary-color);
 }
+
+/* Custom Premium Title Bar */
+.title-bar {
+    height: 34px;
+    background: rgba(7, 9, 14, 0.95);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    user-select: none;
+    z-index: 999;
+}
+
+.title-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-main);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.title-bar-logo {
+    width: 16px;
+    height: 16px;
+}
+
+.title-bar-title {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    letter-spacing: 0.3px;
+    color: var(--text-muted);
+}
+
+.title-bar-actions {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.title-btn {
+    background: none;
+    border: none;
+    width: 44px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.title-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.title-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.title-btn.btn-close:hover {
+    background: var(--danger);
+    color: #ffffff;
+}
+
+.pywebview-drag-region {
+    cursor: move;
+}
+
