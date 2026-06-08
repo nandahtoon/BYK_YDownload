@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import subprocess
 
@@ -448,6 +449,19 @@ class YTDownloaderAPI:
         """
         last_file_path = [None] # Mutable container to share with hook
 
+        def is_subtitle_file(filepath):
+            if not filepath:
+                return False
+            ext = os.path.splitext(filepath)[1].lower()
+            return ext in ['.vtt', '.srt', '.ass', '.ssa', '.sbv', '.lrc', '.srv1', '.srv2', '.srv3', '.ttml', '.xml']
+
+        def is_intermediate_stream(filepath):
+            """Check if filepath is a raw stream fragment like .f251.webm or .f396.mp4"""
+            if not filepath:
+                return False
+            base = os.path.splitext(filepath)[0]
+            return bool(re.search(r'\.f\d+$', base))
+
         def format_speed(speed_bytes):
             if not speed_bytes:
                 return "0 KB/s"
@@ -484,9 +498,14 @@ class YTDownloaderAPI:
 
             status = d.get('status')
             
-            # Track file path for cleanup
+            # Track file path for cleanup (ignore subtitles and intermediate stream fragments)
             if d.get('filename'):
-                last_file_path[0] = d.get('filename')
+                filename = d.get('filename')
+                if not is_subtitle_file(filename) and not is_intermediate_stream(filename):
+                    last_file_path[0] = filename
+                elif not is_subtitle_file(filename) and last_file_path[0] is None:
+                    # Keep intermediate stream as fallback if nothing better is set
+                    last_file_path[0] = filename
 
             if status == 'downloading':
                 total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
@@ -525,8 +544,11 @@ class YTDownloaderAPI:
 
         def postprocessor_hook(d):
             if d.get('status') == 'finished':
-                if d.get('filename'):
-                    last_file_path[0] = d.get('filename')
+                # yt-dlp stores the final filepath in info_dict, NOT in d['filename']
+                info = d.get('info_dict', {})
+                filepath = info.get('filepath') or info.get('_filename') or d.get('filename')
+                if filepath and not is_subtitle_file(filepath) and not is_intermediate_stream(filepath):
+                    last_file_path[0] = filepath
 
         try:
             self._downloader.download(url, options, progress_hook, postprocessor_hook)
@@ -534,11 +556,34 @@ class YTDownloaderAPI:
             # Format size of completed file
             file_size_str = ""
             filepath = last_file_path[0]
+            
+            # 1. Try resolving using title sanitization first (most reliable)
+            import yt_dlp
+            try:
+                title = options.get('title')
+                if title:
+                    safe_title = yt_dlp.utils.sanitize_filename(title)
+                    final_ext = options.get('out_format', 'mp3' if options.get('format_type') == 'audio' else 'mp4')
+                    download_dir = options.get('download_dir', self._download_dir)
+                    expected_filepath = os.path.join(download_dir, f"{safe_title}.{final_ext}")
+                    if os.path.exists(expected_filepath):
+                        filepath = expected_filepath
+            except Exception as e:
+                print(f"Error resolving expected filepath: {e}")
+            
             if filepath:
                 # If the file exists, it's correct
                 if not os.path.exists(filepath):
                     # Try replacing extension with the target format
                     base, ext = os.path.splitext(filepath)
+                    
+                    # Strip language tags if present (e.g. video.en -> video)
+                    base_lower = base.lower()
+                    for lang_suffix in ['.en', '.es', '.fr', '.de', '.it', '.ja', '.ko', '.ru', '.zh']:
+                        if base_lower.endswith(lang_suffix):
+                            base = base[:-len(lang_suffix)]
+                            break
+                            
                     format_type = options.get('format_type', 'video')
                     out_format = options.get('out_format', 'mp3' if format_type == 'audio' else 'mp4')
                     target_filepath = f"{base}.{out_format}"
@@ -807,8 +852,75 @@ class YTDownloaderAPI:
         except Exception:
             pass
 
+    def _resolve_filepath(self, filepath, target_format='mp4'):
+        """Try to resolve a filepath that may be a subtitle, stream fragment, or intermediate file
+        to the actual final media file on disk. Returns the resolved path or original if not found."""
+        if not filepath:
+            return filepath
+        if os.path.exists(filepath):
+            return filepath
+        
+        base, ext = os.path.splitext(filepath)
+        
+        # Strip subtitle language suffix (e.g. video.en.vtt -> video)
+        base_lower = base.lower()
+        for lang_suffix in ['.en', '.es', '.fr', '.de', '.it', '.ja', '.ko', '.ru', '.zh',
+                            '.pt', '.ar', '.hi', '.vi', '.th', '.pl', '.nl', '.sv', '.tr']:
+            if base_lower.endswith(lang_suffix):
+                base = base[:-len(lang_suffix)]
+                break
+        
+        # Strip yt-dlp format ID suffix (e.g. video.f251 -> video, video.f396 -> video)
+        base = re.sub(r'\.f\d+$', '', base)
+        
+        # Try the target format first, then common extensions
+        target_exts = [target_format, 'mp4', 'mkv', 'webm', 'mp3', 'm4a', 'flac', 'wav', 'opus', 'ogg']
+        seen = set()
+        for check_ext in target_exts:
+            if check_ext in seen:
+                continue
+            seen.add(check_ext)
+            candidate = f"{base}.{check_ext}"
+            if os.path.exists(candidate):
+                return candidate
+        
+        # Fallback: scan the parent directory for files with the same base name
+        parent_dir = os.path.dirname(base)
+        base_name = os.path.basename(base)
+        if parent_dir and os.path.exists(parent_dir):
+            for f in os.listdir(parent_dir):
+                if f.startswith(base_name) and not f.endswith('.part') and not f.endswith('.ytdl'):
+                    full = os.path.join(parent_dir, f)
+                    if os.path.isfile(full) and not any(f.lower().endswith(se) for se in
+                            ['.vtt', '.srt', '.ass', '.ssa', '.sbv', '.lrc', '.ttml']):
+                        return full
+        
+        return filepath  # Return original if nothing found
+
     def get_download_history(self):
-        return self._load_history()
+        history = self._load_history()
+        modified = False
+        for item in history:
+            filepath = item.get('filepath')
+            if filepath and not os.path.exists(filepath):
+                resolved = self._resolve_filepath(filepath, item.get('format', 'mp4'))
+                if resolved != filepath and os.path.exists(resolved):
+                    item['filepath'] = resolved
+                    # Also update file_size if it was missing
+                    try:
+                        size_bytes = os.path.getsize(resolved)
+                        if size_bytes < 1024 * 1024:
+                            item['file_size'] = f"{size_bytes / 1024:.1f} KB"
+                        elif size_bytes < 1024 * 1024 * 1024:
+                            item['file_size'] = f"{size_bytes / (1024 * 1024):.1f} MB"
+                        else:
+                            item['file_size'] = f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
+                    except Exception:
+                        pass
+                    modified = True
+        if modified:
+            self._save_history(history)
+        return history
 
     def add_to_history(self, task):
         history = self._load_history()
@@ -833,11 +945,18 @@ class YTDownloaderAPI:
 
     def open_file(self, filepath):
         try:
-            if filepath and os.path.exists(filepath):
+            if not filepath:
+                return {'success': False, 'error': 'No file path provided.'}
+            # Try direct path first
+            if os.path.exists(filepath):
                 os.startfile(filepath)
                 return {'success': True}
-            else:
-                return {'success': False, 'error': 'File does not exist.'}
+            # Smart resolution: try to find the actual media file
+            resolved = self._resolve_filepath(filepath)
+            if os.path.exists(resolved):
+                os.startfile(resolved)
+                return {'success': True}
+            return {'success': False, 'error': f'File does not exist: {os.path.basename(filepath)}'}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
@@ -845,6 +964,11 @@ class YTDownloaderAPI:
         try:
             if filepath:
                 filepath = os.path.abspath(filepath)
+                if not os.path.exists(filepath):
+                    # Smart resolution: try to find the actual media file
+                    resolved = self._resolve_filepath(filepath)
+                    if os.path.exists(resolved):
+                        filepath = resolved
                 if os.path.exists(filepath):
                     subprocess.Popen(f'explorer /select,"{filepath}"')
                 else:
