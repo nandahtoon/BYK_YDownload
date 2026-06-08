@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTK's YTube Downloader</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ff007f" />
+                                <stop offset="100%" stop-color="#7f00ff" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" fill="url(#logo-grad)"/>
+                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="white"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-name">BTK's</span>
+                    <span class="brand-subname">YTube Downloader</span>
+                </div>
+            </div>
+
+            <!-- Glowing Free & Open Badge -->
+            <div class="sidebar-badge-free">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span>100% Free & Unlimited</span>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" id="btn-nav-video" onclick="switchTab('video')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="4" />
+                        <polygon points="10 8 16 12 10 16 10 8" />
+                    </svg>
+                    <span>Single Video</span>
+                </button>
+                <button class="nav-item" id="btn-nav-playlist" onclick="switchTab('playlist')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <rect x="3" y="5" width="2" height="2" />
+                        <rect x="3" y="11" width="2" height="2" />
+                        <rect x="3" y="17" width="2" height="2" />
+                    </svg>
+                    <span>Playlist</span>
+                </button>
+                <button class="nav-item" id="btn-nav-downloads" onclick="switchTab('downloads')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    <span>Downloads</span>
+                    <span class="badge" id="downloads-badge" style="display: none;">0</span>
+                </button>
+                <button class="nav-item" id="btn-nav-settings" onclick="switchTab('settings')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Settings</span>
+                </button>
+            </nav>
+
+            <!-- Bottom FFmpeg Status -->
+            <div class="status-panel">
+                <div class="status-indicator">
+                    <span class="status-dot warning" id="ffmpeg-dot"></span>
+                    <span class="status-text" id="ffmpeg-text">Checking FFmpeg...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="header">
+                <h1 id="page-title">Single Video Downloader</h1>
+                <div class="header-actions">
+                    <span class="dir-label" id="current-dir-display">Downloads</span>
+                    <button class="btn btn-secondary btn-small" onclick="browseFolder()">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Change
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tabs Container -->
+            <div class="tab-panels">
+                
+                <!-- SINGLE VIDEO TAB -->
+                <section class="tab-panel active" id="tab-video">
+                    <div class="search-box card">
+                        <div class="input-wrapper">
+                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input type="text" id="video-url-input" placeholder="Paste YouTube video link here... (e.g., https://www.youtube.com/watch?v=...)" />
+                            <button class="btn btn-primary" id="btn-fetch-video" onclick="fetchVideo()">Analyze</button>
+                        </div>
+                        <p id="video-url-status" class="url-status-message"></p>
+                    </div>
+
+                    <!-- Video Details Card (Loaded Dynamically) -->
+                    <div class="video-details-container" id="video-details" style="display: none;">
+                        <div class="grid grid-2">
+                            <!-- Thumbnail / Info -->
+                            <div class="card video-info-card">
+                                <div class="thumbnail-wrapper">
+                                    <img id="v-thumbnail" src="" alt="Thumbnail" />
+                                    <span class="duration" id="v-duration">0:00</span>
+                                </div>
+                                <div class="metadata">
+                                    <h3 class="video-title" id="v-title">Video Title</h3>
+                                    <p class="video-author" id="v-author">Channel Name</p>
+                                </div>
+                            </div>
+
+                            <!-- Options Panel -->
+                            <div class="card download-options-card">
+                                <h2>Download Configurations</h2>
+                                <div class="form-group">
+                                    <label for="video-quality">Select Video Quality</label>
+                                    <div class="select-wrapper">
+                                        <select id="video-quality" onchange="checkVideoFormatType(this.value)">
+                                            <!-- Injected dynamically -->
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" id="audio-bitrate-group" style="display: none;">
+                                    <label for="video-audio-bitrate">Audio Bitrate (MP3)</label>
+                                    <div class="select-wrapper">
+                                        <select id="video-audio-bitrate">
+                                            <option value="128">128 kbps (Standard)</option>
+                                            <option value="192" selected>192 kbps (High Quality)</option>
+                                            <option value="320">320 kbps (Premium Ultra)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="video-subtitle">Select Subtitle Language</label>
+                                    <div class="select-wrapper">
+                                        <select id="video-subtitle">
+                                            <option value="">None (No subtitles)</option>
+                                            <!-- Injected dynamically -->
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-accent btn-large w-full mt-auto" onclick="downloadVideo()">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" class="mr-2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                    </svg>
+                                    Start Download
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="loading-state" id="video-loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Analyzing video URL, fetching formats...</p>
+                    </div>
+                </section>
+
+                <!-- PLAYLIST TAB -->
+                <section class="tab-panel" id="tab-playlist">
+                    <div class="search-box card">
+                        <div class="input-wrapper">
+                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input type="text" id="playlist-url-input" placeholder="Paste YouTube playlist link here... (e.g., https://www.youtube.com/playlist?list=...)" />
+                            <button class="btn btn-primary" id="btn-fetch-playlist" onclick="fetchPlaylist()">Analyze</button>
+                        </div>
+                        <p id="playlist-url-status" class="url-status-message"></p>
+                    </div>
+
+                    <!-- Playlist Details (Loaded Dynamically) -->
+                    <div class="playlist-details-container" id="playlist-details" style="display: none;">
+                        <div class="card playlist-header-card">
+                            <div class="playlist-meta">
+                                <h3 class="playlist-title" id="p-title">Playlist Title</h3>
+                                <p class="playlist-author" id="p-author">Author</p>
+                                <span class="playlist-count" id="p-count">0 Videos</span>
+                            </div>
+                            
+                            <!-- Global Select Configs -->
+                            <div class="playlist-global-options">
+                                <div class="form-group flex-1">
+                                    <label for="p-quality">Quality</label>
+                                    <select id="p-quality" onchange="checkPlaylistFormatType(this.value)">
+                                        <option value="bestvideo[height<=1080]+bestaudio/best[height<=1080]" selected>1080p (Full HD)</option>
+                                        <option value="bestvideo[height<=720]+bestaudio/best[height<=720]">720p (HD)</option>
+                                        <option value="bestvideo[height<=480]+bestaudio/best[height<=480]">480p (Medium)</option>
+                                        <option value="bestvideo[height<=360]+bestaudio/best[height<=360]">360p (Low)</option>
+                                        <option value="bestaudio/best">Audio Only (MP3)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group flex-1" id="p-audio-bitrate-group" style="display: none;">
+                                    <label for="p-audio-bitrate">Audio Bitrate</label>
+                                    <select id="p-audio-bitrate">
+                                        <option value="128">128 kbps</option>
+                                        <option value="192" selected>192 kbps</option>
+                                        <option value="320">320 kbps</option>
+                                    </select>
+                                </div>
+                                <div class="form-group flex-1">
+                                    <label for="p-subtitle">Subtitles</label>
+                                    <select id="p-subtitle">
+                                        <option value="">None</option>
+                                        <option value="en" selected>English</option>
+                                        <option value="es">Spanish</option>
+                                        <option value="fr">French</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-accent btn-medium" onclick="downloadSelectedPlaylistVideos()">
+                                    Download Selection
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Playlist Entries Card -->
+                        <div class="card playlist-list-card">
+                            <div class="list-actions">
+                                <h3>Videos in Playlist</h3>
+                                <div class="action-buttons" style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div class="select-wrapper select-small" style="min-width: 140px;">
+                                        <select id="playlist-sort-select" onchange="sortPlaylist(this.value)">
+                                            <option value="default">Default Order</option>
+                                            <option value="title-asc">Title: A-Z</option>
+                                            <option value="title-desc">Title: Z-A</option>
+                                            <option value="duration-asc">Duration: Shortest</option>
+                                            <option value="duration-desc">Duration: Longest</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-secondary btn-small" onclick="toggleAllPlaylist(true)">Select All</button>
+                                    <button class="btn btn-secondary btn-small" onclick="toggleAllPlaylist(false)">Deselect All</button>
+                                </div>
+                            </div>
+                            <div class="playlist-items" id="playlist-items-list">
+                                <!-- Injected dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="loading-state" id="playlist-loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Analyzing playlist, compiling video index...</p>
+                    </div>
+                </section>
+
+                <!-- DOWNLOADS TAB -->
+                <section class="tab-panel" id="tab-downloads">
+                    <div class="downloads-container">
+                        <!-- Active list -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Active & Completed Downloads</h2>
+                                <button class="btn btn-secondary btn-small" onclick="clearCompletedDownloads()">Clear Completed</button>
+                            </div>
+                            <div class="downloads-list" id="active-downloads-list">
+                                <!-- Dynamic download rows will go here -->
+                                <div class="empty-state" id="downloads-empty">
+                                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 8v8M8 12h8"/>
+                                    </svg>
+                                    <h3>No downloads yet</h3>
+                                    <p>Start a download in the Single Video or Playlist tab to see progress here.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS TAB -->
+                <section class="tab-panel" id="tab-settings">
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <h2>Application Configuration</h2>
+                            <div class="settings-list">
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>Download Directory</h4>
+                                        <p id="settings-dir-label">c:\Users\user\Downloads</p>
+                                    </div>
+                                    <button class="btn btn-primary" onclick="browseFolder()">Browse</button>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>FFmpeg Status</h4>
+                                        <p id="settings-ffmpeg-label">Checking compatibility...</p>
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>Download Concurrency</h4>
+                                        <p>Choose serial (one-by-one) or parallel (concurrent) downloads.</p>
+                                    </div>
+                                    <div class="select-wrapper" style="min-width: 180px;">
+                                        <select id="settings-concurrency" onchange="changeConcurrency(this.value)">
+                                            <option value="1" selected>Serial (1 at a time)</option>
+                                            <option value="2">Parallel (2 at a time)</option>
+                                            <option value="3">Parallel (3 at a time)</option>
+                                            <option value="4">Parallel (4 at a time)</option>
+                                            <option value="999">Parallel (Unlimited)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>Download Speed Limit</h4>
+                                        <p>Restrict the maximum download speed/bandwidth per file.</p>
+                                    </div>
+                                    <div class="select-wrapper" style="min-width: 180px;">
+                                        <select id="settings-speed-limit" onchange="changeSpeedLimit(this.value)">
+                                            <option value="unlimited" selected>Unlimited</option>
+                                            <option value="500k">500 KB/s</option>
+                                            <option value="1m">1 MB/s</option>
+                                            <option value="2m">2 MB/s</option>
+                                            <option value="5m">5 MB/s</option>
+                                            <option value="10m">10 MB/s</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>Speed Boost (Segment Concurrency)</h4>
+                                        <p>Download segment-based streams using multiple concurrent threads.</p>
+                                    </div>
+                                    <div class="select-wrapper" style="min-width: 180px;">
+                                        <select id="settings-fragments" onchange="changeConcurrentFragments(this.value)">
+                                            <option value="1">Standard (1 segment)</option>
+                                            <option value="3" selected>Fast (3 segments)</option>
+                                            <option value="5">Turbo (5 segments)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>Color Theme</h4>
+                                        <p>Customize the glassmorphic accent colors and mesh highlights.</p>
+                                    </div>
+                                    <div class="select-wrapper" style="min-width: 180px;">
+                                        <select id="settings-theme" onchange="changeTheme(this.value)">
+                                            <option value="cyberpunk" selected>Cyberpunk Neon</option>
+                                            <option value="emerald">Emerald Quantum</option>
+                                            <option value="sapphire">Sapphire Deep</option>
+                                            <option value="amber">Amber Ember</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>Embed Metadata & Tags</h4>
+                                        <p>Write video title, artist, and details inside downloaded files.</p>
+                                    </div>
+                                    <label class="switch-container">
+                                        <input type="checkbox" id="settings-embed-metadata" onchange="toggleEmbedMetadata(this.checked)" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>Embed Album Art / Thumbnail</h4>
+                                        <p>Embed the video thumbnail as the cover image (requires FFmpeg).</p>
+                                    </div>
+                                    <label class="switch-container">
+                                        <input type="checkbox" id="settings-embed-thumbnail" onchange="toggleEmbedThumbnail(this.checked)" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
+                                        <h4>Downloader Engine (yt-dlp)</h4>
+                                        <p id="settings-engine-label">Loading engine version...</p>
+                                    </div>
+                                    <button class="btn btn-primary" id="btn-update-engine" onclick="updateEngine()">Update Engine</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h2>About BTK's YTube Downloader</h2>
+                            <p>A fast, modern YouTube video and playlist downloader utilizing <strong>yt-dlp</strong>.</p>
+                            <p style="margin-top: 1rem;">Version: Beta 1.1</p>
+                            <p>Author/Developer: BTK , Powered AI</p>
+                            <div class="tech-stack-badges">
+                                <span class="badge-tech">Python</span>
+                                <span class="badge-tech">PyWebView</span>
+                                <span class="badge-tech">yt-dlp</span>
+                                <span class="badge-tech">FFmpeg</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- JavaScript Link -->
+    <script src="app.js"></script>
+</body>
+</html>
