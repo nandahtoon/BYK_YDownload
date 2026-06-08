@@ -1355,3 +1355,177 @@ body.theme-amber {
     cursor: move;
 }
 
+/* --- Version 1.2 Upgrades --- */
+
+/* Clipboard Smart Banner */
+.clipboard-banner {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 10000;
+    width: 360px;
+    background: linear-gradient(135deg, rgba(20, 26, 43, 0.95) 0%, rgba(13, 17, 30, 0.95) 100%);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 16px 0 rgba(127, 0, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.clipboard-banner-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.clipboard-icon {
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.clipboard-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.clipboard-banner-text .banner-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.clipboard-banner-text .banner-url {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.clipboard-banner-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+/* Saved Playlists library */
+.saved-playlists-card {
+    margin-top: 1rem;
+}
+
+.saved-playlists-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 0.75rem;
+    padding-right: 0.25rem;
+}
+
+.saved-playlist-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.saved-playlist-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--accent);
+}
+
+.saved-playlist-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.saved-playlist-info .p-row-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.saved-playlist-info .p-row-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* History Ledger rows */
+.history-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.history-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.history-thumbnail {
+    width: 60px;
+    height: 45px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.history-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.history-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-meta-sub {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.history-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+

@@ -78,6 +78,10 @@ class YTDownloaderAPI:
         self._embed_thumbnail = False
         self._theme = 'cyberpunk'
         
+        # Version 1.2 Custom Settings
+        self._cookies_file = ''
+        self._clipboard_auto_detect = True
+        
         # Resolve application directory (works for both source run and PyInstaller bundle)
         if getattr(sys, 'frozen', False):
             self._app_dir = os.path.dirname(sys.executable)
@@ -148,6 +152,8 @@ class YTDownloaderAPI:
                     self._embed_metadata = config.get('embed_metadata', self._embed_metadata)
                     self._embed_thumbnail = config.get('embed_thumbnail', self._embed_thumbnail)
                     self._theme = config.get('theme', self._theme)
+                    self._cookies_file = config.get('cookies_file', '')
+                    self._clipboard_auto_detect = config.get('clipboard_auto_detect', True)
             except Exception as e:
                 print(f"Error loading config: {e}")
 
@@ -164,7 +170,9 @@ class YTDownloaderAPI:
                     'concurrent_fragments': self._concurrent_fragments,
                     'embed_metadata': self._embed_metadata,
                     'embed_thumbnail': self._embed_thumbnail,
-                    'theme': self._theme
+                    'theme': self._theme,
+                    'cookies_file': self._cookies_file,
+                    'clipboard_auto_detect': self._clipboard_auto_detect
                 }, f, indent=4)
         except Exception as e:
             print(f"Error saving config: {e}")
@@ -386,6 +394,7 @@ class YTDownloaderAPI:
             options['concurrent_fragments'] = self._concurrent_fragments
             options['embed_metadata'] = self._embed_metadata
             options['embed_thumbnail'] = self._embed_thumbnail
+            options['cookies_file'] = self._cookies_file
             
             if download_id in self._cancelled_downloads:
                 self._cancelled_downloads.remove(download_id)
@@ -516,6 +525,50 @@ class YTDownloaderAPI:
 
         try:
             self._downloader.download(url, options, progress_hook)
+            
+            # Format size of completed file
+            file_size_str = ""
+            filepath = last_file_path[0]
+            if filepath:
+                # If the file exists, it's correct
+                if not os.path.exists(filepath):
+                    # Try replacing extension with the target format
+                    base, ext = os.path.splitext(filepath)
+                    format_type = options.get('format_type', 'video')
+                    out_format = options.get('out_format', 'mp3' if format_type == 'audio' else 'mp4')
+                    target_filepath = f"{base}.{out_format}"
+                    if os.path.exists(target_filepath):
+                        filepath = target_filepath
+                    else:
+                        # Fallback: check if any file with the same base name exists (since extensions can vary)
+                        parent_dir = os.path.dirname(filepath)
+                        base_name = os.path.basename(base)
+                        if os.path.exists(parent_dir):
+                            for f in os.listdir(parent_dir):
+                                if f.startswith(base_name) and not f.endswith('.part') and not f.endswith('.ytdl'):
+                                    filepath = os.path.join(parent_dir, f)
+                                    break
+                
+                try:
+                    if os.path.exists(filepath):
+                        size_bytes = os.path.getsize(filepath)
+                        file_size_str = format_bytes_local(size_bytes)
+                except Exception:
+                    pass
+            
+            # Save to history
+            history_item = {
+                'id': download_id,
+                'title': options.get('title', 'Unknown Title'),
+                'url': url,
+                'filepath': filepath or "",
+                'thumbnail': options.get('thumbnail', ''),
+                'timestamp': int(time.time()),
+                'format': options.get('out_format', 'mp3' if options.get('format_type') == 'audio' else 'mp4'),
+                'file_size': file_size_str
+            }
+            self.add_to_history(history_item)
+            
             self._evaluate_js(f"updateDownloadProgress({json.dumps(download_id)}, 100, 'Completed', '00:00', 'completed', '', '', {json.dumps('[download] 100% completed successfully')})")
         except DownloadCancelled:
             # Handle cancellation cleanup
@@ -676,6 +729,167 @@ class YTDownloaderAPI:
     def close_window(self):
         if self._window:
             self._window.destroy()
+
+    # --- VERSION 1.2 NEW APIS ---
+    
+    def get_clipboard_text(self):
+        try:
+            import clr
+            clr.AddReference("System")
+            from System.Threading import Thread, ThreadStart, ApartmentState
+            
+            result = [""]
+            def run_in_sta():
+                try:
+                    clr.AddReference("System.Windows.Forms")
+                    from System.Windows.Forms import Clipboard
+                    if Clipboard.ContainsText():
+                        result[0] = Clipboard.GetText()
+                except Exception as e:
+                    print(f"Error in STA clipboard read: {e}")
+            
+            t = Thread(ThreadStart(run_in_sta))
+            t.SetApartmentState(ApartmentState.STA)
+            t.Start()
+            t.Join()
+            return result[0]
+        except Exception as e:
+            print(f"Error reading clipboard: {e}")
+            return ""
+
+    def get_clipboard_auto_detect(self):
+        return self._clipboard_auto_detect
+
+    def set_clipboard_auto_detect(self, val):
+        self._clipboard_auto_detect = bool(val)
+        self.save_config()
+        return {'success': True}
+
+    def select_cookies_file(self):
+        if not self._window:
+            return self._cookies_file
+        result = self._window.create_file_dialog(webview.OPEN_DIALOG, file_types=('Text Files (*.txt)', 'All Files (*.*)'))
+        if result and len(result) > 0:
+            self._cookies_file = result[0]
+            self.save_config()
+            return self._cookies_file
+        return self._cookies_file
+
+    def clear_cookies_file(self):
+        self._cookies_file = ''
+        self.save_config()
+        return ''
+
+    def get_cookies_file(self):
+        return self._cookies_file
+
+    # History Helper Methods
+    def _load_history(self):
+        history_path = os.path.join(self._config_dir, 'history.json')
+        if os.path.exists(history_path):
+            try:
+                with open(history_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return []
+
+    def _save_history(self, history):
+        history_path = os.path.join(self._config_dir, 'history.json')
+        try:
+            with open(history_path, 'w', encoding='utf-8') as f:
+                json.dump(history, f, indent=4)
+        except Exception:
+            pass
+
+    def get_download_history(self):
+        return self._load_history()
+
+    def add_to_history(self, task):
+        history = self._load_history()
+        # Avoid duplicates by filepath
+        if task.get('filepath'):
+            history = [item for item in history if item.get('filepath') != task.get('filepath')]
+        history.insert(0, task)
+        # Cap at 100
+        history = history[:100]
+        self._save_history(history)
+        return {'success': True}
+
+    def delete_history_item(self, filepath):
+        history = self._load_history()
+        history = [item for item in history if item.get('filepath') != filepath]
+        self._save_history(history)
+        return {'success': True}
+
+    def clear_history(self):
+        self._save_history([])
+        return {'success': True}
+
+    def open_file(self, filepath):
+        try:
+            if filepath and os.path.exists(filepath):
+                os.startfile(filepath)
+                return {'success': True}
+            else:
+                return {'success': False, 'error': 'File does not exist.'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def show_in_folder(self, filepath):
+        try:
+            if filepath:
+                filepath = os.path.abspath(filepath)
+                if os.path.exists(filepath):
+                    subprocess.Popen(f'explorer /select,"{filepath}"')
+                else:
+                    parent_dir = os.path.dirname(filepath)
+                    if os.path.exists(parent_dir):
+                        os.startfile(parent_dir)
+                    else:
+                        return {'success': False, 'error': 'Folder does not exist.'}
+                return {'success': True}
+            else:
+                return {'success': False, 'error': 'Invalid filepath.'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    # Playlists Helper Methods
+    def _load_playlists(self):
+        playlists_path = os.path.join(self._config_dir, 'playlists.json')
+        if os.path.exists(playlists_path):
+            try:
+                with open(playlists_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return []
+
+    def _save_playlists(self, playlists):
+        playlists_path = os.path.join(self._config_dir, 'playlists.json')
+        try:
+            with open(playlists_path, 'w', encoding='utf-8') as f:
+                json.dump(playlists, f, indent=4)
+        except Exception:
+            pass
+
+    def get_saved_playlists(self):
+        return self._load_playlists()
+
+    def save_playlist(self, playlist):
+        playlists = self._load_playlists()
+        # Avoid duplicates by url
+        if playlist.get('url'):
+            playlists = [item for item in playlists if item.get('url') != playlist.get('url')]
+        playlists.insert(0, playlist)
+        self._save_playlists(playlists)
+        return {'success': True, 'playlists': playlists}
+
+    def delete_saved_playlist(self, url):
+        playlists = self._load_playlists()
+        playlists = [item for item in playlists if item.get('url') != url]
+        self._save_playlists(playlists)
+        return {'success': True, 'playlists': playlists}
 
 # Start webview app
 def main():

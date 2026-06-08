@@ -64,7 +64,29 @@ function initApp() {
         if (chk) chk.checked = enabled;
     });
 
-    // Register URL input listeners for real-time validation
+    // Fetch embedding settings
+    window.pywebview.api.get_embed_metadata().then(enabled => {
+        const chk = document.getElementById('settings-embed-metadata');
+        if (chk) chk.checked = enabled;
+    });
+    window.pywebview.api.get_embed_thumbnail().then(enabled => {
+        const chk = document.getElementById('settings-embed-thumbnail');
+        if (chk) chk.checked = enabled;
+    });
+
+    // Version 1.2 Settings Fetch
+    window.pywebview.api.get_clipboard_auto_detect().then(enabled => {
+        const chk = document.getElementById('settings-clipboard-auto');
+        if (chk) chk.checked = enabled;
+    });
+    updateCookiesFileDisplay();
+    loadDownloadHistory();
+    loadSavedPlaylists();
+
+    // Register clipboard checker on focus
+    window.addEventListener('focus', () => {
+        checkClipboardForLink();
+    });
     let videoDebounceTimeout = null;
     let playlistDebounceTimeout = null;
 
@@ -298,7 +320,7 @@ function renderVideoDetails(data) {
         qualitySelect.appendChild(option);
     });
 
-    // Hide or show audio bitrate select initially
+    // Reset and populate format selector based on format type
     checkVideoFormatType(qualitySelect.value);
 
     // Populate Subtitles
@@ -341,9 +363,12 @@ function downloadVideo() {
 
     const qualitySelect = document.getElementById('video-quality');
     const subtitleSelect = document.getElementById('video-subtitle');
+    const formatSelect = document.getElementById('video-format');
     
     const quality = qualitySelect.value;
     const subtitle = subtitleSelect.value;
+    const outFormat = formatSelect ? formatSelect.value : 'mp4';
+    const isAudio = quality === 'bestaudio/best';
 
     const bitrateSelect = document.getElementById('video-audio-bitrate');
     const audioBitrate = bitrateSelect ? bitrateSelect.value : '192';
@@ -356,6 +381,8 @@ function downloadVideo() {
         thumbnail: currentVideoData.thumbnail,
         url: currentVideoData.url,
         quality: quality,
+        format_type: isAudio ? 'audio' : 'video',
+        out_format: outFormat,
         subtitle: subtitle,
         status: 'queued',
         progress: 0,
@@ -372,7 +399,11 @@ function downloadVideo() {
     window.pywebview.api.start_download(downloadId, task.url, {
         quality: quality,
         subtitle: subtitle || null,
-        audio_bitrate: audioBitrate
+        audio_bitrate: audioBitrate,
+        format_type: isAudio ? 'audio' : 'video',
+        out_format: outFormat,
+        title: task.title,
+        thumbnail: task.thumbnail
     }).then(res => {
         if (!res.success) {
             updateDownloadProgress(downloadId, 0, 'Error', '00:00', 'error', res.error);
@@ -520,6 +551,9 @@ function downloadSelectedPlaylistVideos() {
     }
 
     const quality = document.getElementById('p-quality').value;
+    const formatSelect = document.getElementById('p-format');
+    const outFormat = formatSelect ? formatSelect.value : 'mp4';
+    const isAudio = quality === 'bestaudio/best';
     const subtitle = document.getElementById('p-subtitle').value;
 
     const bitrateSelect = document.getElementById('p-audio-bitrate');
@@ -540,6 +574,8 @@ function downloadSelectedPlaylistVideos() {
             thumbnail: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600',
             url: url,
             quality: quality,
+            format_type: isAudio ? 'audio' : 'video',
+            out_format: outFormat,
             subtitle: subtitle,
             status: 'queued',
             progress: 0,
@@ -554,7 +590,11 @@ function downloadSelectedPlaylistVideos() {
         window.pywebview.api.start_download(downloadId, url, {
             quality: quality,
             subtitle: subtitle || null,
-            audio_bitrate: audioBitrate
+            audio_bitrate: audioBitrate,
+            format_type: isAudio ? 'audio' : 'video',
+            out_format: outFormat,
+            title: title,
+            thumbnail: task.thumbnail
         }).then(res => {
             if (!res.success) {
                 updateDownloadProgress(downloadId, 0, 'Error', '00:00', 'error', res.error);
@@ -705,6 +745,7 @@ function updateDownloadProgress(downloadId, percent, speed, eta, status, errorMs
                     downloadsStore[downloadId].active = false;
                     updateBadgeCount(-1);
                     showToast(`"${downloadsStore[downloadId].title}" finished!`, "success");
+                    loadDownloadHistory(); // Reload history ledger
                 }
                 break;
             case 'cancelled':
@@ -852,16 +893,105 @@ function changeConcurrentFragments(val) {
 
 // Check format and show/hide bitrate selector
 function checkVideoFormatType(quality) {
+    const isAudio = quality === 'bestaudio/best';
+    const formatSelect = document.getElementById('video-format');
     const group = document.getElementById('audio-bitrate-group');
-    if (group) {
-        group.style.display = quality === 'bestaudio/best' ? 'block' : 'none';
+
+    if (formatSelect) {
+        formatSelect.innerHTML = '';
+        if (isAudio) {
+            // Audio options
+            const options = [
+                { value: 'mp3', text: 'MP3 (Universal)' },
+                { value: 'm4a', text: 'M4A (High Quality)' },
+                { value: 'flac', text: 'FLAC (Lossless Studio)' },
+                { value: 'wav', text: 'WAV (Uncompressed)' }
+            ];
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.value;
+                el.innerText = opt.text;
+                formatSelect.appendChild(el);
+            });
+            // Show bitrate if MP3/M4A selected
+            if (group) group.style.display = (formatSelect.value === 'mp3' || formatSelect.value === 'm4a') ? 'block' : 'none';
+        } else {
+            // Video options
+            const options = [
+                { value: 'mp4', text: 'MP4 (Universal)' },
+                { value: 'mkv', text: 'MKV (Matroska)' },
+                { value: 'webm', text: 'WebM (Open Video)' }
+            ];
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.value;
+                el.innerText = opt.text;
+                formatSelect.appendChild(el);
+            });
+            if (group) group.style.display = 'none';
+        }
+    }
+}
+
+function onVideoFormatChange() {
+    const qualitySelect = document.getElementById('video-quality');
+    const isAudio = qualitySelect ? qualitySelect.value === 'bestaudio/best' : false;
+    const formatSelect = document.getElementById('video-format');
+    const group = document.getElementById('audio-bitrate-group');
+    
+    if (isAudio && group && formatSelect) {
+        group.style.display = (formatSelect.value === 'mp3' || formatSelect.value === 'm4a') ? 'block' : 'none';
     }
 }
 
 function checkPlaylistFormatType(quality) {
+    const isAudio = quality === 'bestaudio/best';
+    const formatSelect = document.getElementById('p-format');
     const group = document.getElementById('p-audio-bitrate-group');
-    if (group) {
-        group.style.display = quality === 'bestaudio/best' ? 'block' : 'none';
+
+    if (formatSelect) {
+        formatSelect.innerHTML = '';
+        if (isAudio) {
+            // Audio options
+            const options = [
+                { value: 'mp3', text: 'MP3' },
+                { value: 'm4a', text: 'M4A' },
+                { value: 'flac', text: 'FLAC' },
+                { value: 'wav', text: 'WAV' }
+            ];
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.value;
+                el.innerText = opt.text;
+                formatSelect.appendChild(el);
+            });
+            if (group) group.style.display = (formatSelect.value === 'mp3' || formatSelect.value === 'm4a') ? 'block' : 'none';
+        } else {
+            // Video options
+            const options = [
+                { value: 'mp4', text: 'MP4' },
+                { value: 'mkv', text: 'MKV' },
+                { value: 'webm', text: 'WebM' }
+            ];
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.value;
+                el.innerText = opt.text;
+                formatSelect.appendChild(el);
+            });
+            if (group) group.style.display = 'none';
+        }
+    }
+}
+
+function onPlaylistFormatChange() {
+    const qualitySelect = document.getElementById('p-quality');
+    const isAudio = qualitySelect ? qualitySelect.value === 'bestaudio/best' : false;
+    const formatSelect = document.getElementById('p-format');
+    const group = document.getElementById('p-audio-bitrate-group');
+
+    if (isAudio && group && formatSelect) {
+        group.style.display = (formatSelect.value === 'mp3' || formatSelect.value === 'm4a') ? 'block' : 'none';
     }
 }
 
@@ -896,6 +1026,483 @@ function toggleEmbedThumbnail(checked) {
         }
     });
 }
+
+// Version 1.2 Settings Event Handlers
+function toggleClipboardAuto(checked) {
+    window.pywebview.api.set_clipboard_auto_detect(checked).then(res => {
+        if (res.success) {
+            showToast(checked ? "Clipboard monitoring enabled" : "Clipboard monitoring disabled", "success");
+        }
+    });
+}
+
+function updateCookiesFileDisplay() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.get_cookies_file().then(path => {
+            const statusDiv = document.getElementById('settings-cookies-status');
+            const clearBtn = document.getElementById('btn-clear-cookies');
+            if (statusDiv) {
+                if (path) {
+                    statusDiv.innerText = `Active file: ${path}`;
+                    statusDiv.style.color = "var(--accent)";
+                    if (clearBtn) clearBtn.style.display = "inline-block";
+                } else {
+                    statusDiv.innerText = "No cookies file loaded.";
+                    statusDiv.style.color = "rgba(255, 255, 255, 0.5)";
+                    if (clearBtn) clearBtn.style.display = "none";
+                }
+            }
+        });
+    }
+}
+
+function browseCookiesFile() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.select_cookies_file().then(path => {
+            updateCookiesFileDisplay();
+            if (path) showToast("Cookies file loaded successfully", "success");
+        });
+    }
+}
+
+function clearCookiesFile() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.clear_cookies_file().then(() => {
+            updateCookiesFileDisplay();
+            showToast("Cookies file removed", "info");
+        });
+    }
+}
+
+// Clipboard Monitoring Functions
+let lastClipboardCheckedUrl = "";
+function checkClipboardForLink() {
+    const chk = document.getElementById('settings-clipboard-auto');
+    if (chk && !chk.checked) return; // Disabled
+
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.get_clipboard_text().then(text => {
+            if (!text) return;
+            text = text.trim();
+            if (text === lastClipboardCheckedUrl) return; // Already seen/analyzed/dismissed
+
+            // Simple fast URL validation
+            if (text.startsWith('http://') || text.startsWith('https://')) {
+                // Check if it's supported
+                window.pywebview.api.check_link_support(text).then(res => {
+                    if (res && res.supported) {
+                        showClipboardBanner(text);
+                    }
+                });
+            }
+        });
+    }
+}
+
+function showClipboardBanner(url) {
+    const banner = document.getElementById('clipboard-banner');
+    const urlText = document.getElementById('clipboard-detected-url');
+    if (banner && urlText) {
+        urlText.innerText = url;
+        banner.style.display = "block";
+    }
+}
+
+function dismissClipboardBanner() {
+    const banner = document.getElementById('clipboard-banner');
+    if (banner) {
+        banner.style.display = "none";
+    }
+    // Remember last url to not prompt again
+    const urlText = document.getElementById('clipboard-detected-url');
+    if (urlText) {
+        lastClipboardCheckedUrl = urlText.innerText;
+    }
+}
+
+function analyzeClipboardLink() {
+    const urlText = document.getElementById('clipboard-detected-url');
+    if (urlText) {
+        const url = urlText.innerText;
+        dismissClipboardBanner();
+        // Detect if it is a playlist or video
+        if (url.includes('playlist') || url.includes('list=')) {
+            switchTab('playlist');
+            document.getElementById('playlist-url-input').value = url;
+            fetchPlaylist();
+        } else {
+            switchTab('video');
+            document.getElementById('video-url-input').value = url;
+            fetchVideo();
+        }
+    }
+}
+
+// Playlist Filters & Ranges
+function togglePlaylistFiltersPanel() {
+    const panel = document.getElementById('playlist-filters-panel');
+    if (panel) {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function applyPlaylistFilters() {
+    const startInput = document.getElementById('filter-range-start');
+    const endInput = document.getElementById('filter-range-end');
+    const textInput = document.getElementById('filter-title-text');
+
+    const startVal = startInput && startInput.value ? parseInt(startInput.value) : 1;
+    const endVal = endInput && endInput.value ? parseInt(endInput.value) : null;
+    const searchText = textInput ? textInput.value.trim().toLowerCase() : "";
+
+    const rows = document.querySelectorAll('#playlist-items-list .playlist-row');
+    let matchedCount = 0;
+
+    rows.forEach((row, idx) => {
+        const checkbox = row.querySelector('.row-check');
+        if (!checkbox) return;
+
+        const indexSpan = row.querySelector('.row-index');
+        const rowIndex = indexSpan ? parseInt(indexSpan.innerText) : (idx + 1);
+
+        const titleSpan = row.querySelector('.row-title');
+        const titleText = titleSpan ? titleSpan.innerText.toLowerCase() : "";
+
+        // Check index range criteria
+        let indexMatches = true;
+        if (rowIndex < startVal) {
+            indexMatches = false;
+        }
+        if (endVal !== null && rowIndex > endVal) {
+            indexMatches = false;
+        }
+
+        // Check text search criteria
+        let textMatches = true;
+        if (searchText && !titleText.includes(searchText)) {
+            textMatches = false;
+        }
+
+        const isMatch = indexMatches && textMatches;
+        checkbox.checked = isMatch;
+        if (isMatch) matchedCount++;
+    });
+
+    showToast(`Applied filters. Selected ${matchedCount} videos`, "success");
+}
+
+function resetPlaylistFilters() {
+    const startInput = document.getElementById('filter-range-start');
+    const endInput = document.getElementById('filter-range-end');
+    const textInput = document.getElementById('filter-title-text');
+
+    if (startInput) startInput.value = "";
+    if (endInput) endInput.value = "";
+    if (textInput) textInput.value = "";
+
+    // Re-check all
+    document.querySelectorAll('.row-check').forEach(chk => {
+        chk.checked = true;
+    });
+
+    showToast("Filters reset. Selected all videos", "info");
+}
+
+// Saved Playlists Functions
+function loadSavedPlaylists() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.get_saved_playlists().then(playlists => {
+            renderSavedPlaylists(playlists);
+        });
+    }
+}
+
+function renderSavedPlaylists(playlists) {
+    const container = document.getElementById('saved-playlists-list');
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (!playlists || playlists.length === 0) {
+        container.innerHTML = `<p class="empty-state" style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No saved playlists yet. Analyze a playlist and click "Save Playlist" to store it here.</p>`;
+        return;
+    }
+
+    playlists.forEach(p => {
+        const row = document.createElement('div');
+        row.className = "saved-playlist-row";
+        row.onclick = () => {
+            document.getElementById('playlist-url-input').value = p.url;
+            switchTab('playlist');
+            fetchPlaylist();
+        };
+
+        row.innerHTML = `
+            <div class="saved-playlist-info">
+                <span class="p-row-title">${escapeHTML(p.title)}</span>
+                <span class="p-row-meta">${p.video_count} videos • by ${escapeHTML(p.uploader || 'Unknown')}</span>
+            </div>
+            <button class="btn btn-secondary btn-small" onclick="deleteSavedPlaylist(event, '${encodeURIComponent(p.url)}')" style="padding: 0.25rem 0.5rem; display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+            </button>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function saveCurrentPlaylist() {
+    if (!currentPlaylistData) return;
+    if (window.pywebview && window.pywebview.api) {
+        const playlistItem = {
+            url: currentPlaylistData.url,
+            title: currentPlaylistData.title,
+            video_count: currentPlaylistData.video_count,
+            uploader: currentPlaylistData.uploader || 'Unknown'
+        };
+        window.pywebview.api.save_playlist(playlistItem).then(res => {
+            if (res.success) {
+                showToast("Playlist saved to library", "success");
+                loadSavedPlaylists();
+            } else {
+                showToast("Failed to save playlist", "error");
+            }
+        });
+    }
+}
+
+function deleteSavedPlaylist(event, urlEncoded) {
+    event.stopPropagation(); // Prevent loading the playlist
+    const url = decodeURIComponent(urlEncoded);
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.delete_saved_playlist(url).then(res => {
+            if (res.success) {
+                showToast("Playlist removed from library", "info");
+                loadSavedPlaylists();
+            }
+        });
+    }
+}
+
+// Download History Functions
+function loadDownloadHistory() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.get_download_history().then(history => {
+            renderDownloadHistory(history);
+        });
+    }
+}
+
+function renderDownloadHistory(history) {
+    const container = document.getElementById('history-downloads-list');
+    const emptyState = document.getElementById('history-empty');
+    if (!container) return;
+    
+    container.innerHTML = "";
+
+    if (!history || history.length === 0) {
+        if (emptyState) {
+            container.appendChild(emptyState);
+            emptyState.style.display = "block";
+        } else {
+            container.innerHTML = `
+                <div class="empty-state" id="history-empty">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 8v4l3 3" />
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                    <h3>Library is empty</h3>
+                    <p>Your completed downloads will appear here persistently.</p>
+                </div>`;
+        }
+        return;
+    }
+
+    history.forEach(item => {
+        const row = document.createElement('div');
+        row.className = "history-row";
+
+        const formattedTime = new Date(item.timestamp * 1000).toLocaleString();
+        const thumbnail = item.thumbnail || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=200';
+        
+        row.innerHTML = `
+            <img src="${thumbnail}" class="history-thumbnail" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=200'" />
+            <div class="history-meta">
+                <span class="history-title" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</span>
+                <span class="history-meta-sub">${item.format.toUpperCase()} • ${item.file_size || 'Unknown size'} • ${formattedTime}</span>
+            </div>
+            <div class="history-actions">
+                <button class="btn btn-primary btn-small" onclick="openHistoryFile('${encodeURIComponent(item.filepath)}')" title="Play / Open File" style="padding: 0.35rem 0.5rem; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+                <button class="btn btn-secondary btn-small" onclick="showHistoryFileInFolder('${encodeURIComponent(item.filepath)}')" title="Show in Folder" style="padding: 0.35rem 0.5rem; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-secondary btn-small" onclick="deleteHistoryItem(event, '${encodeURIComponent(item.filepath)}')" title="Remove from list" style="padding: 0.35rem 0.5rem; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function openHistoryFile(filepathEncoded) {
+    const filepath = decodeURIComponent(filepathEncoded);
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.open_file(filepath).then(res => {
+            if (!res.success) showToast(res.error, "error");
+        });
+    }
+}
+
+function showHistoryFileInFolder(filepathEncoded) {
+    const filepath = decodeURIComponent(filepathEncoded);
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.show_in_folder(filepath).then(res => {
+            if (!res.success) showToast(res.error, "error");
+        });
+    }
+}
+
+function deleteHistoryItem(event, filepathEncoded) {
+    event.stopPropagation();
+    const filepath = decodeURIComponent(filepathEncoded);
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.delete_history_item(filepath).then(res => {
+            if (res.success) {
+                showToast("Removed from history", "info");
+                loadDownloadHistory();
+            }
+        });
+    }
+}
+
+function clearHistoryLedger() {
+    if (confirm("Are you sure you want to clear your download library history? (This will not delete the actual files on your disk)")) {
+        if (window.pywebview && window.pywebview.api) {
+            window.pywebview.api.clear_history().then(res => {
+                if (res.success) {
+                    showToast("Library history cleared", "info");
+                    loadDownloadHistory();
+                }
+            });
+        }
+    }
+}
+
+// Helper to escape HTML characters
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+}
+
+// Live Bandwidth Graphing Code
+const speedHistory = [];
+const maxHistoryPoints = 30;
+
+// Initialize speed history with zeros
+for (let i = 0; i < maxHistoryPoints; i++) {
+    speedHistory.push(0);
+}
+
+function parseSpeedString(speedStr) {
+    if (!speedStr) return 0;
+    speedStr = speedStr.trim().toLowerCase();
+    if (speedStr.includes('pending') || speedStr.includes('queued') || speedStr.includes('stopped') || speedStr.includes('merging') || speedStr.includes('completed')) return 0;
+    
+    const match = speedStr.match(/([0-9.]+)\s*(kb\/s|mb\/s|b\/s)/);
+    if (!match) return 0;
+    
+    const value = parseFloat(match[1]);
+    const unit = match[2];
+    
+    if (unit === 'mb/s') {
+        return value * 1024 * 1024;
+    } else if (unit === 'kb/s') {
+        return value * 1024;
+    } else {
+        return value;
+    }
+}
+
+function drawBandwidthChart() {
+    const canvas = document.getElementById('bandwidth-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = canvas.width = canvas.parentElement.clientWidth;
+    const height = canvas.height = canvas.parentElement.clientHeight;
+
+    ctx.clearRect(0, 0, width, height);
+
+    const maxVal = Math.max(...speedHistory, 1024 * 1024); // min 1MB/s scale
+
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7f00ff';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, 'rgba(127, 0, 255, 0.15)');
+    gradient.addColorStop(1, 'rgba(127, 0, 255, 0)');
+
+    ctx.beginPath();
+    
+    const step = width / (maxHistoryPoints - 1);
+    
+    for (let i = 0; i < maxHistoryPoints; i++) {
+        const x = i * step;
+        const y = height - (speedHistory[i] / maxVal) * (height - 6) - 3;
+        
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.stroke();
+
+    ctx.lineTo(width, height);
+    ctx.lineTo(0, height);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+}
+
+// Bandwidth check interval
+setInterval(() => {
+    let totalSpeed = 0;
+    Object.keys(downloadsStore).forEach(id => {
+        const task = downloadsStore[id];
+        if (task.status === 'downloading') {
+            totalSpeed += parseSpeedString(task.speed);
+        }
+    });
+
+    speedHistory.push(totalSpeed);
+    if (speedHistory.length > maxHistoryPoints) {
+        speedHistory.shift();
+    }
+    
+    drawBandwidthChart();
+}, 800);
 
 // Window control API wrappers
 function minimizeWindow() {

@@ -165,6 +165,11 @@ class YTDownloader:
             'fragment_retries': 10 # Retry segment/fragment failures
         }
         
+        # Cookies authentication
+        cookies_file = options.get('cookies_file')
+        if cookies_file and os.path.exists(cookies_file):
+            ydl_opts['cookiefile'] = cookies_file
+        
         # Speed Limiting
         speed_limit = options.get('speed_limit')
         if speed_limit and speed_limit != 'unlimited':
@@ -187,21 +192,25 @@ class YTDownloader:
         if self.ffmpeg_path:
             ydl_opts['ffmpeg_location'] = self.ffmpeg_path
             
-        # Quality format selection
+        # Quality/Format configuration
+        format_type = options.get('format_type', 'video')
+        out_format = options.get('out_format', 'mp3' if format_type == 'audio' else 'mp4')
         audio_bitrate = options.get('audio_bitrate', '192')
-        if quality == 'bestaudio/best':
-            # Audio only conversion to MP3
+
+        if format_type == 'audio':
             ydl_opts['format'] = 'bestaudio/best'
             ydl_opts['postprocessors'] = [{
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': str(audio_bitrate),
+                'preferredcodec': out_format,
             }]
+            # Only specify preferredquality for lossy codecs
+            if out_format in ['mp3', 'm4a']:
+                ydl_opts['postprocessors'][0]['preferredquality'] = str(audio_bitrate)
         else:
+            # Video download format
             ydl_opts['format'] = quality
-            # Enable merging if ffmpeg is available
             if self.ffmpeg_path:
-                ydl_opts['merge_output_format'] = 'mp4'
+                ydl_opts['merge_output_format'] = out_format
 
         # Subtitles configuration
         if subtitle_lang:

@@ -175,6 +175,15 @@
                                     </div>
                                 </div>
 
+                                <div class="form-group" id="video-format-group">
+                                    <label for="video-format">Output Format</label>
+                                    <div class="select-wrapper">
+                                        <select id="video-format" onchange="onVideoFormatChange()">
+                                            <!-- Injected dynamically -->
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <div class="form-group" id="audio-bitrate-group" style="display: none;">
                                     <label for="video-audio-bitrate">Audio Bitrate (MP3)</label>
                                     <div class="select-wrapper">
@@ -227,29 +236,56 @@
                         </div>
                         <p id="playlist-url-status" class="url-status-message"></p>
                     </div>
+                    
+                    <!-- Saved Playlists Library Card -->
+                    <div class="card saved-playlists-card" id="saved-playlists-library-card">
+                        <h3 style="margin-bottom: 0.5rem; color: var(--text-main);">Saved Playlists Library</h3>
+                        <div class="saved-playlists-list" id="saved-playlists-list">
+                            <!-- Injected dynamically -->
+                            <p class="empty-state" style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No saved playlists yet. Analyze a playlist and click "Save Playlist" to store it here.</p>
+                        </div>
+                    </div>
 
                     <!-- Playlist Details (Loaded Dynamically) -->
                     <div class="playlist-details-container" id="playlist-details" style="display: none;">
                         <div class="card playlist-header-card">
-                            <div class="playlist-meta">
-                                <h3 class="playlist-title" id="p-title">Playlist Title</h3>
-                                <p class="playlist-author" id="p-author">Author</p>
-                                <span class="playlist-count" id="p-count">0 Videos</span>
+                            <div class="playlist-meta-wrapper" style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; flex-wrap: wrap; gap: 1rem;">
+                                <div class="playlist-meta">
+                                    <h3 class="playlist-title" id="p-title">Playlist Title</h3>
+                                    <p class="playlist-author" id="p-author">Author</p>
+                                    <span class="playlist-count" id="p-count">0 Videos</span>
+                                </div>
+                                <button class="btn btn-secondary btn-small" id="btn-save-playlist" onclick="saveCurrentPlaylist()" style="margin-top: 0.5rem;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                        <polyline points="17 21 17 13 7 13 7 21" />
+                                        <polyline points="7 3 7 8 15 8" />
+                                    </svg>
+                                    Save Playlist
+                                </button>
                             </div>
                             
                             <!-- Global Select Configs -->
-                            <div class="playlist-global-options">
-                                <div class="form-group flex-1">
+                            <div class="playlist-global-options" style="flex-wrap: wrap; gap: 1rem; align-items: flex-end; width: 100%; margin-top: 1rem;">
+                                <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
                                     <label for="p-quality">Quality</label>
                                     <select id="p-quality" onchange="checkPlaylistFormatType(this.value)">
                                         <option value="bestvideo[height<=1080]+bestaudio/best[height<=1080]" selected>1080p (Full HD)</option>
                                         <option value="bestvideo[height<=720]+bestaudio/best[height<=720]">720p (HD)</option>
                                         <option value="bestvideo[height<=480]+bestaudio/best[height<=480]">480p (Medium)</option>
                                         <option value="bestvideo[height<=360]+bestaudio/best[height<=360]">360p (Low)</option>
-                                        <option value="bestaudio/best">Audio Only (MP3)</option>
+                                        <option value="bestaudio/best">Audio Only</option>
                                     </select>
                                 </div>
-                                <div class="form-group flex-1" id="p-audio-bitrate-group" style="display: none;">
+                                <div class="form-group" style="flex: 1; min-width: 100px; margin-bottom: 0;" id="p-format-group">
+                                    <label for="p-format">Format</label>
+                                    <select id="p-format" onchange="onPlaylistFormatChange()">
+                                        <option value="mp4" selected>MP4</option>
+                                        <option value="mkv">MKV</option>
+                                        <option value="webm">WebM</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0;" id="p-audio-bitrate-group" style="display: none;">
                                     <label for="p-audio-bitrate">Audio Bitrate</label>
                                     <select id="p-audio-bitrate">
                                         <option value="128">128 kbps</option>
@@ -257,7 +293,7 @@
                                         <option value="320">320 kbps</option>
                                     </select>
                                 </div>
-                                <div class="form-group flex-1">
+                                <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0;">
                                     <label for="p-subtitle">Subtitles</label>
                                     <select id="p-subtitle">
                                         <option value="">None</option>
@@ -266,7 +302,7 @@
                                         <option value="fr">French</option>
                                     </select>
                                 </div>
-                                <button class="btn btn-accent btn-medium" onclick="downloadSelectedPlaylistVideos()">
+                                <button class="btn btn-accent btn-medium" onclick="downloadSelectedPlaylistVideos()" style="height: 38px;">
                                     Download Selection
                                 </button>
                             </div>
@@ -276,7 +312,13 @@
                         <div class="card playlist-list-card">
                             <div class="list-actions">
                                 <h3>Videos in Playlist</h3>
-                                <div class="action-buttons" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="action-buttons" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button class="btn btn-secondary btn-small" id="btn-toggle-filters" onclick="togglePlaylistFiltersPanel()">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
+                                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                                        </svg>
+                                        Filters / Ranges
+                                    </button>
                                     <div class="select-wrapper select-small" style="min-width: 140px;">
                                         <select id="playlist-sort-select" onchange="sortPlaylist(this.value)">
                                             <option value="default">Default Order</option>
@@ -290,6 +332,29 @@
                                     <button class="btn btn-secondary btn-small" onclick="toggleAllPlaylist(false)">Deselect All</button>
                                 </div>
                             </div>
+
+                            <!-- Filter & Range Selector Panel (Initially Collapsed) -->
+                            <div class="filters-panel" id="playlist-filters-panel" style="display: none; padding: 1rem; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1rem;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="filter-range-start">From #</label>
+                                        <input type="number" id="filter-range-start" placeholder="1" min="1" style="width: 100%; padding: 0.4rem; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); color: var(--text-main); border-radius: 4px;" />
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="filter-range-end">To #</label>
+                                        <input type="number" id="filter-range-end" placeholder="End" min="1" style="width: 100%; padding: 0.4rem; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); color: var(--text-main); border-radius: 4px;" />
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0; flex-grow: 2;">
+                                        <label for="filter-title-text">Search Title</label>
+                                        <input type="text" id="filter-title-text" placeholder="Search title query..." style="width: 100%; padding: 0.4rem; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); color: var(--text-main); border-radius: 4px;" />
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <button class="btn btn-accent btn-small" onclick="applyPlaylistFilters()">Apply Select</button>
+                                        <button class="btn btn-secondary btn-small" onclick="resetPlaylistFilters()">Reset</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="playlist-items" id="playlist-items-list">
                                 <!-- Injected dynamically -->
                             </div>
@@ -307,8 +372,14 @@
                     <div class="downloads-container">
                         <!-- Active list -->
                         <div class="card">
-                            <div class="card-header">
-                                <h2>Active & Completed Downloads</h2>
+                            <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
+                                <div>
+                                    <h2>Active Downloads</h2>
+                                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Live Network Speed Graph</p>
+                                </div>
+                                <div class="chart-container" style="flex: 1; min-width: 180px; max-width: 320px; height: 40px;">
+                                    <canvas id="bandwidth-chart" height="40" style="width: 100%; height: 40px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);"></canvas>
+                                </div>
                                 <button class="btn btn-secondary btn-small" onclick="clearCompletedDownloads()">Clear Completed</button>
                             </div>
                             <div class="downloads-list" id="active-downloads-list">
@@ -318,8 +389,30 @@
                                         <circle cx="12" cy="12" r="10"/>
                                         <path d="M12 8v8M8 12h8"/>
                                     </svg>
-                                    <h3>No downloads yet</h3>
+                                    <h3>No active downloads</h3>
                                     <p>Start a download in the Single Video or Playlist tab to see progress here.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Download History Ledger Card -->
+                        <div class="card" style="margin-top: 1rem;">
+                            <div class="card-header">
+                                <div>
+                                    <h2>Persistent Download Library</h2>
+                                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Quick play or show downloaded files in folder</p>
+                                </div>
+                                <button class="btn btn-secondary btn-small" onclick="clearHistoryLedger()">Clear Library</button>
+                            </div>
+                            <div class="downloads-list" id="history-downloads-list" style="margin-top: 1rem;">
+                                <!-- History list items will be injected here -->
+                                <div class="empty-state" id="history-empty">
+                                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M12 8v4l3 3" />
+                                        <circle cx="12" cy="12" r="10" />
+                                    </svg>
+                                    <h3>Library is empty</h3>
+                                    <p>Your completed downloads will appear here persistently.</p>
                                 </div>
                             </div>
                         </div>
@@ -425,6 +518,31 @@
                                 </div>
                                 <div class="settings-item">
                                     <div class="setting-info">
+                                        <h4>Clipboard Auto-Detect & Smart Paste</h4>
+                                        <p>Detect supported URLs in your clipboard when the application window gains focus.</p>
+                                    </div>
+                                    <label class="switch-container">
+                                        <input type="checkbox" id="settings-clipboard-auto" onchange="toggleClipboardAuto(this.checked)" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="settings-item" style="flex-direction: column; align-items: stretch; gap: 0.8rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                        <div class="setting-info">
+                                            <h4>Cookies Authentication File</h4>
+                                            <p>Upload a exported cookies.txt file to access private/age-restricted downloads.</p>
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button class="btn btn-primary btn-small" onclick="browseCookiesFile()">Browse</button>
+                                            <button class="btn btn-secondary btn-small" id="btn-clear-cookies" onclick="clearCookiesFile()" style="display: none;">Remove</button>
+                                        </div>
+                                    </div>
+                                    <div id="settings-cookies-status" style="font-size: 0.75rem; padding: 0.5rem; background: rgba(0,0,0,0.25); border-radius: 4px; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); word-break: break-all;">
+                                        No cookies file loaded.
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="setting-info">
                                         <h4>Downloader Engine (yt-dlp)</h4>
                                         <p id="settings-engine-label">Loading engine version...</p>
                                     </div>
@@ -453,6 +571,26 @@
 
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- Clipboard Smart Banner (Floating) -->
+    <div class="clipboard-banner" id="clipboard-banner" style="display: none;">
+        <div class="clipboard-banner-content">
+            <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" class="clipboard-icon" style="margin-top: 2px;">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                </svg>
+                <div class="clipboard-banner-text">
+                    <span class="banner-title">Link Detected in Clipboard</span>
+                    <span class="banner-url" id="clipboard-detected-url">https://youtube.com/watch?v=...</span>
+                </div>
+            </div>
+            <div class="clipboard-banner-actions">
+                <button class="btn btn-accent btn-small" onclick="analyzeClipboardLink()">Analyze Link</button>
+                <button class="btn btn-secondary btn-small" onclick="dismissClipboardBanner()">Dismiss</button>
+            </div>
+        </div>
+    </div>
 
     <!-- JavaScript Link -->
     <script src="app.js"></script>
