@@ -1038,7 +1038,7 @@ def main():
         
         # Create webview window
         window = webview.create_window(
-            "BTK's YTube Downloader",
+            "SU's YTube Downloader",
             index_html,
             js_api=api,
             width=1100,

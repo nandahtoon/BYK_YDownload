@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='BTK_YTube_Downloader',
+    name='SU_Youtube_Downloader',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
