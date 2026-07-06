@@ -309,10 +309,13 @@ function renderVideoDetails(data) {
     document.getElementById('v-title').innerText = data.title;
     document.getElementById('v-author').innerText = data.uploader || 'Unknown Channel';
 
+    // Filter out 'bestaudio/best' from qualities if it exists
+    const videoQualities = data.quality_options.filter(opt => opt.id !== 'bestaudio/best');
+    
     // Populate Qualities
     const qualitySelect = document.getElementById('video-quality');
     qualitySelect.innerHTML = '';
-    data.quality_options.forEach((opt, idx) => {
+    videoQualities.forEach((opt, idx) => {
         const option = document.createElement('option');
         option.value = opt.id;
         option.innerText = opt.label;
@@ -321,7 +324,7 @@ function renderVideoDetails(data) {
     });
 
     // Reset and populate format selector based on format type
-    checkVideoFormatType(qualitySelect.value);
+    onMediaTypeChange();
 
     // Populate Subtitles
     const subtitleSelect = document.getElementById('video-subtitle');
@@ -361,14 +364,18 @@ function formatDuration(seconds) {
 function downloadVideo() {
     if (!currentVideoData) return;
 
+    const mediaTypeSelect = document.getElementById('video-media-type');
+    const isAudio = mediaTypeSelect ? mediaTypeSelect.value === 'audio' : false;
+    
     const qualitySelect = document.getElementById('video-quality');
+    // If it's audio, quality is passed as bestaudio/best for yt-dlp backend
+    const quality = isAudio ? 'bestaudio/best' : (qualitySelect ? qualitySelect.value : '');
+    
     const subtitleSelect = document.getElementById('video-subtitle');
     const formatSelect = document.getElementById('video-format');
     
-    const quality = qualitySelect.value;
     const subtitle = subtitleSelect.value;
-    const outFormat = formatSelect ? formatSelect.value : 'mp4';
-    const isAudio = quality === 'bestaudio/best';
+    const outFormat = formatSelect ? formatSelect.value : (isAudio ? 'mp3' : 'mp4');
 
     const bitrateSelect = document.getElementById('video-audio-bitrate');
     const audioBitrate = bitrateSelect ? bitrateSelect.value : '192';
@@ -550,10 +557,15 @@ function downloadSelectedPlaylistVideos() {
         return;
     }
 
-    const quality = document.getElementById('p-quality').value;
+    const mediaTypeSelect = document.getElementById('p-media-type');
+    const isAudio = mediaTypeSelect ? mediaTypeSelect.value === 'audio' : false;
+
+    const qualitySelect = document.getElementById('p-quality');
+    const quality = isAudio ? 'bestaudio/best' : (qualitySelect ? qualitySelect.value : 'bestvideo+bestaudio');
+    
     const formatSelect = document.getElementById('p-format');
-    const outFormat = formatSelect ? formatSelect.value : 'mp4';
-    const isAudio = quality === 'bestaudio/best';
+    const outFormat = formatSelect ? formatSelect.value : (isAudio ? 'mp3' : 'mp4');
+    
     const subtitle = document.getElementById('p-subtitle').value;
 
     const bitrateSelect = document.getElementById('p-audio-bitrate');
@@ -951,10 +963,13 @@ function changeConcurrentFragments(val) {
 }
 
 // Check format and show/hide bitrate selector
-function checkVideoFormatType(quality) {
-    const isAudio = quality === 'bestaudio/best';
+function onMediaTypeChange() {
+    const mediaTypeSelect = document.getElementById('video-media-type');
+    const isAudio = mediaTypeSelect ? mediaTypeSelect.value === 'audio' : false;
+    
     const formatSelect = document.getElementById('video-format');
-    const group = document.getElementById('audio-bitrate-group');
+    const audioGroup = document.getElementById('audio-bitrate-group');
+    const qualityGroup = document.getElementById('video-quality-group');
 
     if (formatSelect) {
         formatSelect.innerHTML = '';
@@ -973,7 +988,8 @@ function checkVideoFormatType(quality) {
                 formatSelect.appendChild(el);
             });
             // Show bitrate if MP3/M4A selected
-            if (group) group.style.display = (formatSelect.value === 'mp3' || formatSelect.value === 'm4a') ? 'block' : 'none';
+            if (audioGroup) audioGroup.style.display = (formatSelect.value === 'mp3' || formatSelect.value === 'm4a') ? 'block' : 'none';
+            if (qualityGroup) qualityGroup.style.display = 'none';
         } else {
             // Video options
             const options = [
@@ -987,14 +1003,15 @@ function checkVideoFormatType(quality) {
                 el.innerText = opt.text;
                 formatSelect.appendChild(el);
             });
-            if (group) group.style.display = 'none';
+            if (audioGroup) audioGroup.style.display = 'none';
+            if (qualityGroup) qualityGroup.style.display = 'block';
         }
     }
 }
 
 function onVideoFormatChange() {
-    const qualitySelect = document.getElementById('video-quality');
-    const isAudio = qualitySelect ? qualitySelect.value === 'bestaudio/best' : false;
+    const mediaTypeSelect = document.getElementById('video-media-type');
+    const isAudio = mediaTypeSelect ? mediaTypeSelect.value === 'audio' : false;
     const formatSelect = document.getElementById('video-format');
     const group = document.getElementById('audio-bitrate-group');
     
@@ -1003,10 +1020,13 @@ function onVideoFormatChange() {
     }
 }
 
-function checkPlaylistFormatType(quality) {
-    const isAudio = quality === 'bestaudio/best';
+function onPlaylistMediaTypeChange() {
+    const mediaTypeSelect = document.getElementById('p-media-type');
+    const isAudio = mediaTypeSelect ? mediaTypeSelect.value === 'audio' : false;
+    
     const formatSelect = document.getElementById('p-format');
-    const group = document.getElementById('p-audio-bitrate-group');
+    const audioGroup = document.getElementById('p-audio-bitrate-group');
+    const qualityGroup = document.getElementById('p-quality-group');
 
     if (formatSelect) {
         formatSelect.innerHTML = '';
@@ -1024,7 +1044,8 @@ function checkPlaylistFormatType(quality) {
                 el.innerText = opt.text;
                 formatSelect.appendChild(el);
             });
-            if (group) group.style.display = (formatSelect.value === 'mp3' || formatSelect.value === 'm4a') ? 'block' : 'none';
+            if (audioGroup) audioGroup.style.display = (formatSelect.value === 'mp3' || formatSelect.value === 'm4a') ? 'block' : 'none';
+            if (qualityGroup) qualityGroup.style.display = 'none';
         } else {
             // Video options
             const options = [
@@ -1038,14 +1059,15 @@ function checkPlaylistFormatType(quality) {
                 el.innerText = opt.text;
                 formatSelect.appendChild(el);
             });
-            if (group) group.style.display = 'none';
+            if (audioGroup) audioGroup.style.display = 'none';
+            if (qualityGroup) qualityGroup.style.display = 'block';
         }
     }
 }
 
 function onPlaylistFormatChange() {
-    const qualitySelect = document.getElementById('p-quality');
-    const isAudio = qualitySelect ? qualitySelect.value === 'bestaudio/best' : false;
+    const mediaTypeSelect = document.getElementById('p-media-type');
+    const isAudio = mediaTypeSelect ? mediaTypeSelect.value === 'audio' : false;
     const formatSelect = document.getElementById('p-format');
     const group = document.getElementById('p-audio-bitrate-group');
 

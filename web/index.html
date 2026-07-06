@@ -167,10 +167,11 @@
                             <div class="card download-options-card">
                                 <h2>Download Configurations</h2>
                                 <div class="form-group">
-                                    <label for="video-quality">Select Video Quality</label>
+                                    <label for="video-media-type">Media Type</label>
                                     <div class="select-wrapper">
-                                        <select id="video-quality" onchange="checkVideoFormatType(this.value)">
-                                            <!-- Injected dynamically -->
+                                        <select id="video-media-type" onchange="onMediaTypeChange()">
+                                            <option value="video" selected>Video</option>
+                                            <option value="audio">Audio Only</option>
                                         </select>
                                     </div>
                                 </div>
@@ -179,6 +180,15 @@
                                     <label for="video-format">Output Format</label>
                                     <div class="select-wrapper">
                                         <select id="video-format" onchange="onVideoFormatChange()">
+                                            <!-- Injected dynamically by app.js -->
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" id="video-quality-group">
+                                    <label for="video-quality">Select Video Quality</label>
+                                    <div class="select-wrapper">
+                                        <select id="video-quality">
                                             <!-- Injected dynamically -->
                                         </select>
                                     </div>
@@ -267,14 +277,20 @@
                             
                             <!-- Global Select Configs -->
                             <div class="playlist-global-options" style="flex-wrap: wrap; gap: 1rem; align-items: flex-end; width: 100%; margin-top: 1rem;">
-                                <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                                <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0;">
+                                    <label for="p-media-type">Media Type</label>
+                                    <select id="p-media-type" onchange="onPlaylistMediaTypeChange()">
+                                        <option value="video" selected>Video</option>
+                                        <option value="audio">Audio Only</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;" id="p-quality-group">
                                     <label for="p-quality">Quality</label>
-                                    <select id="p-quality" onchange="checkPlaylistFormatType(this.value)">
+                                    <select id="p-quality">
                                         <option value="bestvideo[height<=1080]+bestaudio/best[height<=1080]" selected>1080p (Full HD)</option>
                                         <option value="bestvideo[height<=720]+bestaudio/best[height<=720]">720p (HD)</option>
                                         <option value="bestvideo[height<=480]+bestaudio/best[height<=480]">480p (Medium)</option>
                                         <option value="bestvideo[height<=360]+bestaudio/best[height<=360]">360p (Low)</option>
-                                        <option value="bestaudio/best">Audio Only</option>
                                     </select>
                                 </div>
                                 <div class="form-group" style="flex: 1; min-width: 100px; margin-bottom: 0;" id="p-format-group">
