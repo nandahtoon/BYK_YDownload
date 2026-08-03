@@ -281,6 +281,14 @@ class YTDownloaderAPI:
                 'reason': 'Link must start with http:// or https://'
             }
             
+        if 'coursera.org' in url.lower():
+            return {
+                'success': True,
+                'supported': True,
+                'extractor': 'Coursera Course (Use Coursera tab)',
+                'reason': 'Coursera link detected. Switch to the Coursera tab to download complete courses!'
+            }
+            
         try:
             # If extractors are not loaded yet, load them synchronously
             extractors = self._extractors
@@ -405,6 +413,103 @@ class YTDownloaderAPI:
 
         self._process_queue()
         return {'success': True}
+
+    def start_coursera_download(self, download_id, slug_or_url, options):
+        """
+        Starts downloading an entire Coursera course in a background worker thread.
+        """
+        with self._queue_lock:
+            if download_id in self._running_downloads:
+                return {'success': False, 'error': 'Download already active.'}
+            
+            options['download_dir'] = options.get('download_dir') or self._download_dir
+            options['cookies_file'] = options.get('cookies_file') or self._cookies_file
+
+            if download_id in self._cancelled_downloads:
+                self._cancelled_downloads.remove(download_id)
+
+            thread = threading.Thread(
+                target=self._coursera_download_worker,
+                args=(download_id, slug_or_url, options),
+                daemon=True
+            )
+            self._running_downloads[download_id] = thread
+            self._active_downloads[download_id] = thread
+            thread.start()
+
+        return {'success': True}
+
+    def _coursera_download_worker(self, download_id, slug_or_url, options):
+        """
+        Worker thread for downloading a Coursera course.
+        """
+        import time, os
+        from downloader import YTDownloader
+        downloader = YTDownloader()
+        
+        try:
+            slug = downloader.extract_coursera_slug(slug_or_url)
+            outdir = options.get('download_dir') or self._download_dir
+            cookies_file = options.get('cookies_file') or self._cookies_file
+            mode = options.get('mode', 'all')
+            subtitle_lang = options.get('subtitle_lang', 'all')
+
+            def progress_callback(percent, msg, eta):
+                if download_id in self._cancelled_downloads:
+                    raise Exception("Download cancelled by user.")
+                status_str = "Downloading..." if percent < 100 else "Finished"
+                js = f"updateDownloadProgress({json.dumps(download_id)}, {percent}, {json.dumps(status_str)}, {json.dumps(eta)}, {json.dumps('downloading')}, '', '', {json.dumps(msg)})"
+                self._evaluate_js(js)
+
+            # Send initial progress
+            progress_callback(1, f"Starting Coursera download for '{slug}'...", "00:00")
+
+            # Execute Coursera course download
+            result_slug = downloader.download_coursera_course(
+                slug_or_url=slug_or_url,
+                cookies_file=cookies_file,
+                outdir=outdir,
+                mode=mode,
+                subtitle_lang=subtitle_lang,
+                progress_callback=progress_callback
+            )
+
+            # Mark complete
+            course_dir = os.path.join(outdir, result_slug)
+            if not os.path.exists(course_dir):
+                course_dir = outdir
+
+            history_item = {
+                'id': download_id,
+                'title': f"Coursera Course: {result_slug}",
+                'url': f"https://www.coursera.org/learn/{result_slug}",
+                'file_path': course_dir,
+                'date': time.strftime("%Y-%m-%d %H:%M:%S"),
+                'status': 'completed',
+                'type': 'coursera'
+            }
+            self.add_to_history(history_item)
+
+            js_complete = f"updateDownloadProgress({json.dumps(download_id)}, 100, 'Completed', '00:00', 'completed', '', {json.dumps(course_dir)}, {json.dumps('Coursera course download completed successfully!')})"
+            self._evaluate_js(js_complete)
+
+        except Exception as e:
+            err_msg = str(e)
+            if "cancelled by user" in err_msg.lower():
+                status = "cancelled"
+                msg = "[Coursera] Cancelled by user."
+            else:
+                status = "error"
+                msg = f"[Coursera Error] {err_msg}"
+
+            js_err = f"updateDownloadProgress({json.dumps(download_id)}, 0, 'Error', '00:00', {json.dumps(status)}, '', '', {json.dumps(msg)})"
+            self._evaluate_js(js_err)
+        finally:
+            with self._queue_lock:
+                self._running_downloads.pop(download_id, None)
+                self._active_downloads.pop(download_id, None)
+                self._cancelled_downloads.discard(download_id)
+            self._process_queue()
 
     def cancel_download(self, download_id):
         """

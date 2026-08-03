@@ -181,6 +181,7 @@ function switchTab(tabId) {
         switch(tabId) {
             case 'video': pageTitle.innerText = "Single Video Downloader"; break;
             case 'playlist': pageTitle.innerText = "Playlist Downloader"; break;
+            case 'coursera': pageTitle.innerText = "Coursera Course Downloader"; break;
             case 'downloads': pageTitle.innerText = "Active & Completed Downloads"; break;
             case 'settings': pageTitle.innerText = "Settings & Info"; break;
         }
@@ -192,9 +193,12 @@ function updateDownloadDirDisplay(path) {
     currentDownloadDir = path;
     const headerDisplay = document.getElementById('current-dir-display');
     const settingsDisplay = document.getElementById('settings-dir-label');
+    const courseraDisplay = document.getElementById('coursera-dir-display');
     
     if (headerDisplay) headerDisplay.innerText = getBasename(path);
     if (settingsDisplay) settingsDisplay.innerText = path;
+    if (courseraDisplay) courseraDisplay.value = path;
+}
 }
 
 function getBasename(path) {
@@ -380,6 +384,11 @@ function downloadVideo() {
     const bitrateSelect = document.getElementById('video-audio-bitrate');
     const audioBitrate = bitrateSelect ? bitrateSelect.value : '192';
 
+    const startTimeEl = document.getElementById('video-start-time');
+    const endTimeEl = document.getElementById('video-end-time');
+    const startTime = startTimeEl ? startTimeEl.value.trim() : '';
+    const endTime = endTimeEl ? endTimeEl.value.trim() : '';
+
     const randSuffix = Math.random().toString(36).substr(2, 5);
     const downloadId = `dl_vid_${Date.now()}_${randSuffix}`;
     const task = {
@@ -391,6 +400,8 @@ function downloadVideo() {
         format_type: isAudio ? 'audio' : 'video',
         out_format: outFormat,
         subtitle: subtitle,
+        start_time: startTime || null,
+        end_time: endTime || null,
         status: 'queued',
         progress: 0,
         speed: 'Pending...',
@@ -409,6 +420,8 @@ function downloadVideo() {
         audio_bitrate: audioBitrate,
         format_type: isAudio ? 'audio' : 'video',
         out_format: outFormat,
+        start_time: task.start_time,
+        end_time: task.end_time,
         title: task.title,
         thumbnail: task.thumbnail
     }).then(res => {
@@ -643,11 +656,12 @@ function createDownloadCardUI(task) {
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
-                    <button class="btn-retry" id="btn-retry-${task.id}" onclick="retryDownload('${task.id}')" title="Retry Download" style="display: none; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); cursor: pointer; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; padding: 3px; transition: all 0.2s;">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <button class="btn-retry" id="btn-retry-${task.id}" onclick="retryDownload('${task.id}')" title="Retry Download" style="display: none; background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.5); color: #f87171; cursor: pointer; align-items: center; justify-content: center; gap: 4px; height: 26px; border-radius: 6px; padding: 0 10px; font-size: 0.75rem; font-weight: 600; transition: all 0.2s; box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M23 4v6h-6"></path>
                             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                         </svg>
+                        Retry
                     </button>
                 </div>
             </div>
@@ -836,7 +850,19 @@ function updateDownloadProgress(downloadId, percent, speed, eta, status, errorMs
                 if (downloadsStore[downloadId] && downloadsStore[downloadId].active !== false) {
                     downloadsStore[downloadId].active = false;
                     updateBadgeCount(-1);
-                    showToast("Download failed", "error");
+
+                    // Automatic retry up to 2 attempts for transient errors
+                    const task = downloadsStore[downloadId];
+                    if (task && (task.retryCount || 0) < 2) {
+                        task.retryCount = (task.retryCount || 0) + 1;
+                        showToast(`Download failed. Auto-retrying (${task.retryCount}/2)...`, "warning");
+                        setTimeout(() => {
+                            retryDownload(downloadId);
+                        }, 3000);
+                        break;
+                    }
+
+                    showToast("Download failed (click Retry button to try again)", "error");
                 }
                 if (errBox) {
                     errBox.innerText = `Reason: ${errorMsg}`;
@@ -1122,6 +1148,8 @@ function updateCookiesFileDisplay() {
         window.pywebview.api.get_cookies_file().then(path => {
             const statusDiv = document.getElementById('settings-cookies-status');
             const clearBtn = document.getElementById('btn-clear-cookies');
+            const courseraStatusDiv = document.getElementById('coursera-cookies-status');
+
             if (statusDiv) {
                 if (path) {
                     statusDiv.innerText = `Active file: ${path}`;
@@ -1131,6 +1159,16 @@ function updateCookiesFileDisplay() {
                     statusDiv.innerText = "No cookies file loaded.";
                     statusDiv.style.color = "rgba(255, 255, 255, 0.5)";
                     if (clearBtn) clearBtn.style.display = "none";
+                }
+            }
+
+            if (courseraStatusDiv) {
+                if (path) {
+                    courseraStatusDiv.innerText = `Active cookies: ${getBasename(path)}`;
+                    courseraStatusDiv.style.color = "var(--success)";
+                } else {
+                    courseraStatusDiv.innerText = "No cookies file selected (Required for Coursera)";
+                    courseraStatusDiv.style.color = "var(--warning)";
                 }
             }
         });
@@ -1151,6 +1189,70 @@ function clearCookiesFile() {
         window.pywebview.api.clear_cookies_file().then(() => {
             updateCookiesFileDisplay();
             showToast("Cookies file removed", "info");
+        });
+    }
+}
+
+function selectCourseraCookies() {
+    browseCookiesFile();
+}
+
+async function startCourseraDownload() {
+    const urlInput = document.getElementById('coursera-url-input');
+    const urlOrSlug = (urlInput ? urlInput.value : '').trim();
+    if (!urlOrSlug) {
+        showToast("Please enter a Coursera Course URL or Slug.", "warning");
+        return;
+    }
+
+    // Check if cookies are set
+    if (window.pywebview && window.pywebview.api) {
+        const cookiesPath = await window.pywebview.api.get_cookies_file();
+        if (!cookiesPath) {
+            showToast("Coursera download requires a Netscape cookies.txt file from coursera.org. Please select one first.", "error");
+            return;
+        }
+    }
+
+    const modeSelect = document.getElementById('coursera-mode-select');
+    const langSelect = document.getElementById('coursera-lang-select');
+    const mode = modeSelect ? modeSelect.value : 'all';
+    const subtitle_lang = langSelect ? langSelect.value : 'all';
+
+    const downloadId = "coursera_" + Date.now();
+    const options = {
+        mode: mode,
+        subtitle_lang: subtitle_lang
+    };
+
+    const task = {
+        id: downloadId,
+        title: `Coursera: ${urlOrSlug}`,
+        thumbnail: 'favicon.png',
+        url: urlOrSlug,
+        quality: 'best',
+        format_type: 'video',
+        out_format: 'mp4',
+        subtitle: subtitle_lang,
+        status: 'queued',
+        progress: 0,
+        speed: 'Authenticating...',
+        eta: '--:--',
+        error: null
+    };
+
+    downloadsStore[downloadId] = task;
+    createDownloadCardUI(task);
+    switchTab('downloads');
+
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.start_coursera_download(downloadId, urlOrSlug, options).then(res => {
+            if (!res.success) {
+                updateDownloadProgress(downloadId, 0, 'Error', '00:00', 'error', '', '', res.error || "Failed to start Coursera download");
+                showToast(res.error || "Failed to start Coursera download", "error");
+            } else {
+                showToast("Coursera course download started!", "success");
+            }
         });
     }
 }
@@ -1424,6 +1526,13 @@ function renderDownloadHistory(history) {
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
                 </button>
+                <button class="btn btn-secondary btn-small" onclick="redownloadHistoryItem('${escapeHTML(item.url)}', '${escapeHTML(item.title)}')" title="Re-download item" style="padding: 0.35rem 0.5rem; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
                 <button class="btn btn-secondary btn-small" onclick="deleteHistoryItem(event, '${encodeURIComponent(item.filepath)}')" title="Remove from list" style="padding: 0.35rem 0.5rem; display: flex; align-items: center; justify-content: center;">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -1433,6 +1542,44 @@ function renderDownloadHistory(history) {
             </div>
         `;
         container.appendChild(row);
+    });
+}
+
+function redownloadHistoryItem(url, title) {
+    if (!url) return;
+    const randSuffix = Math.random().toString(36).substr(2, 5);
+    const downloadId = `dl_hist_${Date.now()}_${randSuffix}`;
+    const task = {
+        id: downloadId,
+        title: title || 'Re-downloaded Video',
+        thumbnail: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300',
+        url: url,
+        quality: 'bestvideo+bestaudio/best',
+        format_type: 'video',
+        out_format: 'mp4',
+        status: 'queued',
+        progress: 0,
+        speed: 'Pending...',
+        eta: '--:--',
+        error: null
+    };
+    downloadsStore[downloadId] = task;
+    createDownloadCardUI(task);
+    switchTab('downloads');
+    showToast(`Re-downloading "${title}"`, "info");
+
+    window.pywebview.api.start_download(downloadId, url, {
+        quality: task.quality,
+        format_type: 'video',
+        out_format: 'mp4',
+        title: task.title,
+        thumbnail: task.thumbnail
+    }).then(res => {
+        if (!res.success) {
+            updateDownloadProgress(downloadId, 0, 'Error', '00:00', 'error', res.error);
+        } else {
+            updateBadgeCount(1);
+        }
     });
 }
 
@@ -1536,34 +1683,42 @@ function formatSpeedLocal(speed_bytes) {
 
 function drawBandwidthChart() {
     const canvas = document.getElementById('bandwidth-chart');
-    if (!canvas) return;
+    if (!canvas || !canvas.parentElement) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width = canvas.parentElement.clientWidth;
-    const height = canvas.height = canvas.parentElement.clientHeight;
+    const dpr = window.devicePixelRatio || 1;
+    const clientW = canvas.parentElement.clientWidth || 220;
+    const clientH = canvas.parentElement.clientHeight || 28;
 
-    ctx.clearRect(0, 0, width, height);
+    if (canvas.width !== clientW * dpr || canvas.height !== clientH * dpr) {
+        canvas.width = clientW * dpr;
+        canvas.height = clientH * dpr;
+    }
+    ctx.resetTransform();
+    ctx.scale(dpr, dpr);
 
-    const maxVal = Math.max(...speedHistory, 1024 * 1024); // min 1MB/s scale
+    ctx.clearRect(0, 0, clientW, clientH);
 
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7f00ff';
-    ctx.lineWidth = 1.5;
+    const maxVal = Math.max(...speedHistory, 512 * 1024); // min 512 KB/s scale
+
+    const accentColor = '#a855f7';
+    const cyanColor = '#06b6d4';
+
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 1.8;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, 'rgba(127, 0, 255, 0.12)');
-    gradient.addColorStop(1, 'rgba(127, 0, 255, 0)');
+    const gradient = ctx.createLinearGradient(0, 0, 0, clientH);
+    gradient.addColorStop(0, 'rgba(168, 85, 247, 0.28)');
+    gradient.addColorStop(1, 'rgba(168, 85, 247, 0.0)');
 
     ctx.beginPath();
-    
-    const step = width / (maxHistoryPoints - 1);
-    
+    const step = clientW / (maxHistoryPoints - 1);
     for (let i = 0; i < maxHistoryPoints; i++) {
         const x = i * step;
-        const y = height - (speedHistory[i] / maxVal) * (height - 6) - 3;
-        
+        const y = clientH - (speedHistory[i] / maxVal) * (clientH - 8) - 4;
         if (i === 0) {
             ctx.moveTo(x, y);
         } else {
@@ -1572,21 +1727,32 @@ function drawBandwidthChart() {
     }
     ctx.stroke();
 
-    ctx.lineTo(width, height);
-    ctx.lineTo(0, height);
+    ctx.lineTo(clientW, clientH);
+    ctx.lineTo(0, clientH);
     ctx.fillStyle = gradient;
     ctx.fill();
 
-    // Draw compact informative speed overlays
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.font = '9px system-ui, -apple-system, sans-serif';
-    ctx.textBaseline = 'top';
+    // Draw compact informative speed overlays with glowing cyan dot
+    ctx.font = '600 10px system-ui, -apple-system, sans-serif';
+    ctx.textBaseline = 'middle';
     
     const currentSpeed = speedHistory[speedHistory.length - 1];
     const peakSpeed = Math.max(...speedHistory);
-    
-    ctx.fillText(`Live: ${formatSpeedLocal(currentSpeed)}`, 4, 2);
-    ctx.fillText(`Peak: ${formatSpeedLocal(peakSpeed)}`, width - 68, 2);
+
+    // Live cyan pulse dot
+    ctx.fillStyle = cyanColor;
+    ctx.beginPath();
+    ctx.arc(6, clientH / 2, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fillText(`${formatSpeedLocal(currentSpeed)}`, 13, clientH / 2);
+
+    // Peak badge on right
+    const peakTxt = `Peak: ${formatSpeedLocal(peakSpeed)}`;
+    const textW = ctx.measureText(peakTxt).width;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText(peakTxt, clientW - textW - 4, clientH / 2);
 }
 
 // Bandwidth check interval

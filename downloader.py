@@ -2,6 +2,20 @@ import os
 import yt_dlp
 import imageio_ffmpeg
 import threading
+def parse_time_to_seconds(time_str):
+    if not time_str or not str(time_str).strip():
+        return None
+    parts = str(time_str).strip().split(':')
+    try:
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+        elif len(parts) == 2:
+            return int(parts[0]) * 60 + float(parts[1])
+        elif len(parts) == 1:
+            return float(parts[0])
+    except ValueError:
+        return None
+    return None
 
 class YTDownloader:
     def __init__(self):
@@ -248,6 +262,112 @@ class YTDownloader:
                 'key': 'EmbedThumbnail',
                 'already_have_thumbnail': False,
             })
-        
+
+        # Video Trimming / Download Section Range
+        start_time = options.get('start_time')
+        end_time = options.get('end_time')
+        start_sec = parse_time_to_seconds(start_time)
+        end_sec = parse_time_to_seconds(end_time)
+        if start_sec is not None or end_sec is not None:
+            start_val = start_sec if start_sec is not None else 0
+            end_val = end_sec if end_sec is not None else 999999
+            if end_val > start_val:
+                ydl_opts['download_ranges'] = yt_dlp.utils.download_range_func(None, [(start_val, end_val)])
+                ydl_opts['force_keyframes_at_cuts'] = True
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
+
+    @staticmethod
+    def extract_coursera_slug(url_or_slug):
+        """
+        Extracts the course or specialization slug from a Coursera URL or returns the slug directly.
+        """
+        import re
+        val = str(url_or_slug).strip()
+        match = re.search(r'coursera\.org/(?:learn|specializations)/([^/?#]+)', val, re.IGNORECASE)
+        if match:
+            return match.group(1)
+        # Remove any leading/trailing slashes if user pasted slug directly
+        return val.strip('/')
+
+    def download_coursera_course(self, slug_or_url, cookies_file, outdir, mode='all', subtitle_lang='all', progress_callback=None):
+        """
+        Downloads an entire Coursera course or specialization using dl-coursera.
+        Supports filtering by mode ('all', 'videos_subtitles', 'videos_only', 'subtitles_only')
+        and subtitle language ('all', 'en', 'es', etc.).
+        """
+        import re, os
+        from dl_coursera_run import crawl, gather_dl_tasks, download
+        from dl_coursera.Crawler import CookiesExpiredException, NotFoundExcepton
+
+        slug = self.extract_coursera_slug(slug_or_url)
+        if not slug:
+            raise Exception("Invalid Coursera Course URL or Slug provided.")
+
+        if not cookies_file or not os.path.exists(cookies_file):
+            raise Exception("Coursera download requires a valid Netscape cookies.txt file. Please export cookies from coursera.org and select the file in Settings or the Coursera tab.")
+
+        if progress_callback:
+            progress_callback(5, f"Authenticating & crawling course '{slug}'...", "00:00")
+
+        try:
+            soc = crawl(cookies_file, slug, outdir)
+        except CookiesExpiredException:
+            raise Exception("Coursera cookies have expired or are invalid. Please export a fresh cookies.txt from coursera.org and try again.")
+        except NotFoundExcepton:
+            raise Exception(f"Coursera course or specialization slug '{slug}' was not found. Verify you are enrolled and the slug is correct.")
+        except Exception as e:
+            raise Exception(f"Coursera crawl error: {str(e)}")
+
+        if progress_callback:
+            progress_callback(20, f"Gathering lectures & materials for '{slug}'...", "00:00")
+
+        dl_tasks = gather_dl_tasks(outdir, soc)
+        if not dl_tasks:
+            if progress_callback:
+                progress_callback(100, "Course is empty or already downloaded.", "00:00")
+            return slug
+
+        # Filter dl_tasks based on mode
+        filtered_tasks = []
+        for task in dl_tasks:
+            filename = task.get('filename', '').lower()
+            ext = os.path.splitext(filename)[1]
+
+            is_video = ext in ['.mp4', '.webm', '.mkv', '.m4v']
+            is_subtitle = ext in ['.srt', '.vtt', '.txt']
+
+            # Apply Subtitle language filter if it is a subtitle file
+            if is_subtitle and subtitle_lang and subtitle_lang != 'all':
+                lang_code = str(subtitle_lang).lower()
+                # dl_coursera names subtitles like ...@en.srt or ...@es.srt
+                if f"@{lang_code}" not in filename and f".{lang_code}." not in filename:
+                    continue
+
+            if mode == 'videos_only' and not is_video:
+                continue
+            elif mode == 'subtitles_only' and not is_subtitle:
+                continue
+            elif mode == 'videos_subtitles' and not (is_video or is_subtitle):
+                continue
+
+            filtered_tasks.append(task)
+
+        if not filtered_tasks:
+            if progress_callback:
+                progress_callback(100, "No materials match the selected content filter.", "00:00")
+            return slug
+
+        total_tasks = len(filtered_tasks)
+        if progress_callback:
+            progress_callback(30, f"Downloading {total_tasks} Coursera files...", "00:00")
+
+        # Execute download of filtered tasks
+        download(filtered_tasks, slug, outdir)
+
+        if progress_callback:
+            progress_callback(100, "Coursera course download completed successfully!", "00:00")
+
+        return slug
+

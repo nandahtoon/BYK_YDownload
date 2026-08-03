@@ -1529,3 +1529,110 @@ body.theme-amber {
     gap: 0.4rem;
 }
 
+/* COURSERA COURSE DOWNLOADER STYLES */
+.coursera-badge-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0056D2, #00A3FF);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 163, 255, 0.35);
+}
+
+.coursera-cookies-card {
+    background: rgba(0, 163, 255, 0.08);
+    border: 1px solid rgba(0, 163, 255, 0.3);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.coursera-cookies-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: #00A3FF;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.coursera-cookies-text {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.coursera-cookies-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.3rem;
+}
+
+.coursera-cookies-status {
+    font-size: 0.85rem;
+    font-family: monospace;
+    color: var(--text-main);
+    background: rgba(0, 0, 0, 0.25);
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.coursera-guide-box {
+    margin-top: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+}
+
+.coursera-guide-box h4 {
+    margin: 0 0 0.75rem;
+    color: #00A3FF;
+    font-size: 0.95rem;
+}
+
+.coursera-guide-box ol {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.coursera-guide-box ol li b {
+    color: var(--text-main);
+}
+
+.coursera-guide-box ol li code {
+    background: rgba(0, 163, 255, 0.15);
+    color: #00A3FF;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.coursera-guide-footer {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    color: #10B981;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+

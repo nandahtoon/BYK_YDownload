@@ -88,6 +88,13 @@
                     </svg>
                     <span>Playlist</span>
                 </button>
+                <button class="nav-item" id="btn-nav-coursera" onclick="switchTab('coursera')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                    </svg>
+                    <span>Coursera</span>
+                </button>
                 <button class="nav-item" id="btn-nav-downloads" onclick="switchTab('downloads')">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -212,6 +219,17 @@
                                             <option value="">None (No subtitles)</option>
                                             <!-- Injected dynamically -->
                                         </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Time Range Trimming (Optional)</span>
+                                        <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 400;">e.g. 01:20 - 03:45</span>
+                                    </label>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <input type="text" id="video-start-time" placeholder="Start (00:00)" style="flex: 1; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-surface-2); color: var(--text-main); font-size: 0.85rem;" />
+                                        <input type="text" id="video-end-time" placeholder="End (03:30)" style="flex: 1; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-surface-2); color: var(--text-main); font-size: 0.85rem;" />
                                     </div>
                                 </div>
 
@@ -380,6 +398,114 @@
                     <div class="loading-state" id="playlist-loading" style="display: none;">
                         <div class="spinner"></div>
                         <p>Analyzing playlist, compiling video index...</p>
+                    </div>
+                </section>
+
+                <!-- COURSERA TAB -->
+                <section class="tab-panel" id="tab-coursera">
+                    <div class="card">
+                        <div class="card-header" style="align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="coursera-badge-icon">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                        <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 style="margin: 0; font-size: 1.25rem;">Coursera Course & Lecture Downloader</h2>
+                                    <p class="subtitle" style="margin: 0.25rem 0 0;">Download complete enrolled courses, specializations, videos, subtitles, and readings automatically organized.</p>
+                                </div>
+                            </div>
+                            <div class="badge-free-accent">100% Free & Unlimited</div>
+                        </div>
+
+                        <div class="input-group">
+                            <input type="text" id="coursera-url-input" class="url-input" 
+                                placeholder="Paste Coursera Course URL or Slug (e.g., https://www.coursera.org/learn/machine-learning  or  machine-learning)">
+                            <button class="btn btn-primary" onclick="startCourseraDownload()" id="btn-coursera-download">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                                <span>Download Complete Course</span>
+                            </button>
+                        </div>
+
+                        <!-- Cookies card -->
+                        <div class="coursera-cookies-card">
+                            <div class="coursera-cookies-header">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5" />
+                                    <path d="M8.5 8.5v.01" />
+                                    <path d="M16 15.5v.01" />
+                                    <path d="M12 12v.01" />
+                                    <path d="M11 17v.01" />
+                                    <path d="M7 14v.01" />
+                                </svg>
+                                <span>Coursera Account Authentication (Cookies Required)</span>
+                            </div>
+                            <p class="coursera-cookies-text">
+                                Because Coursera courses require enrollment, you must select your exported Netscape cookies file from <b>coursera.org</b>.
+                            </p>
+                            <div class="coursera-cookies-row">
+                                <span class="coursera-cookies-status" id="coursera-cookies-status">Checking cookies...</span>
+                                <button class="btn btn-secondary btn-sm" onclick="selectCourseraCookies()">
+                                    Select Cookies File (.txt)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Options row -->
+                        <div class="options-grid" style="margin-top: 1.5rem;">
+                            <div class="option-card">
+                                <label class="option-label">Content to Download</label>
+                                <select id="coursera-mode-select" class="form-select">
+                                    <option value="all">All Course Material (Videos, Subtitles & Supplements)</option>
+                                    <option value="videos_subtitles">Videos + Subtitles Only</option>
+                                    <option value="videos_only">Videos Only (.mp4/.webm)</option>
+                                    <option value="subtitles_only">Subtitles Only (.srt/.vtt)</option>
+                                </select>
+                            </div>
+
+                            <div class="option-card">
+                                <label class="option-label">Subtitle Language</label>
+                                <select id="coursera-lang-select" class="form-select">
+                                    <option value="all">All Available Languages</option>
+                                    <option value="en" selected>English (en)</option>
+                                    <option value="es">Spanish (es)</option>
+                                    <option value="fr">French (fr)</option>
+                                    <option value="de">German (de)</option>
+                                    <option value="pt">Portuguese (pt)</option>
+                                    <option value="zh">Chinese (zh)</option>
+                                    <option value="ar">Arabic (ar)</option>
+                                    <option value="hi">Hindi (hi)</option>
+                                </select>
+                            </div>
+
+                            <div class="option-card">
+                                <label class="option-label">Output Directory</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="text" id="coursera-dir-display" class="form-control" readonly value="Loading...">
+                                    <button class="btn btn-secondary btn-sm" onclick="selectDownloadDir()">Change</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- How it works guide -->
+                        <div class="coursera-guide-box">
+                            <h4>How to Download a Complete Coursera Course:</h4>
+                            <ol>
+                                <li><b>Enroll in the course</b> on <a href="#" onclick="pywebview.api.open_url('https://www.coursera.org'); return false;">coursera.org</a> in your browser.</li>
+                                <li><b>Export your cookies:</b> Install a browser extension like <i>Cookie-Editor</i> or <i>Get-cookies.txt</i>, export your cookies for <b>coursera.org</b> in <i>Netscape (.txt)</i> format, and save the file.</li>
+                                <li><b>Select your cookies file</b> above using the <b>"Select Cookies File (.txt)"</b> button.</li>
+                                <li><b>Paste the Course URL or Slug</b> (e.g. <code>https://www.coursera.org/learn/machine-learning</code> or just <code>machine-learning</code>) and click <b>"Download Complete Course"</b>.</li>
+                            </ol>
+                            <div class="coursera-guide-footer">
+                                ✨ <i>Your entire course will be downloaded into structured folders: Course / Module / Week / Lecture with videos, transcripts, and readings!</i>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
