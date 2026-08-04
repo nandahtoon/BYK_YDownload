@@ -311,6 +311,9 @@ class YTDownloader:
         if progress_callback:
             progress_callback(5, f"Authenticating & crawling course '{slug}'...", "00:00")
 
+        cache_dir = os.path.join(outdir, slug, '.cache')
+        os.makedirs(cache_dir, exist_ok=True)
+
         try:
             soc = crawl(cookies_file, slug, outdir)
         except CookiesExpiredException:

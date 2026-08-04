@@ -199,7 +199,6 @@ function updateDownloadDirDisplay(path) {
     if (settingsDisplay) settingsDisplay.innerText = path;
     if (courseraDisplay) courseraDisplay.value = path;
 }
-}
 
 function getBasename(path) {
     const parts = path.split(/[\\/]/);
