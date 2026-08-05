@@ -444,15 +444,23 @@
                                     <path d="M11 17v.01" />
                                     <path d="M7 14v.01" />
                                 </svg>
-                                <span>Coursera Account Authentication (Cookies Required)</span>
+                                <span>Coursera Account Authentication</span>
                             </div>
                             <p class="coursera-cookies-text">
-                                Because Coursera courses require enrollment, you must select your exported Netscape cookies file from <b>coursera.org</b>.
+                                To download your enrolled courses, you must securely authenticate with Coursera. Your session will be saved automatically.
                             </p>
-                            <div class="coursera-cookies-row">
-                                <span class="coursera-cookies-status" id="coursera-cookies-status">Checking cookies...</span>
-                                <button class="btn btn-secondary btn-sm" onclick="selectCourseraCookies()">
-                                    Select Cookies File (.txt)
+                            <div class="coursera-cookies-row" style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                                <div id="coursera-auth-status" style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="status-dot warning" id="coursera-auth-dot"></span>
+                                    <span class="status-text" id="coursera-auth-text" style="font-weight: 500;">Checking authentication...</span>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" id="btn-coursera-login" onclick="openCourseraLogin()" style="background-color: var(--primary-color); border-color: var(--primary-color); color: white;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-bottom;">
+                                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                                        <polyline points="10 17 15 12 10 7" />
+                                        <line x1="15" y1="12" x2="3" y2="12" />
+                                    </svg>
+                                    Login to Coursera
                                 </button>
                             </div>
                         </div>

@@ -439,6 +439,70 @@ class YTDownloaderAPI:
 
         return {'success': True}
 
+    def open_coursera_login(self):
+        """
+        Spawns an internal login window for Coursera to automatically extract cookies.
+        """
+        import webview
+        import os
+        
+        login_win = webview.create_window('Login to Coursera', 'https://www.coursera.org/?authMode=login', width=600, height=700)
+        
+        def on_closed():
+            print("[Coursera Auth] Login window closed. Extracting cookies...")
+            try:
+                cookies = self._window.get_cookies()
+                
+                netscape_lines = ["# Netscape HTTP Cookie File", "# https://curl.haxx.se/rfc/cookie_spec.html", "# This is a generated file!  Do not edit.", ""]
+                found_auth = False
+                
+                for chunk in cookies:
+                    if hasattr(chunk, 'items'):
+                        for key, morsel in chunk.items():
+                            domain = morsel.get('domain', '')
+                            if 'coursera.org' in domain:
+                                path = morsel.get('path', '/')
+                                secure = 'TRUE' if morsel.get('secure') else 'FALSE'
+                                expires = morsel.get('expires', '0')
+                                if not expires: expires = '0'
+                                try:
+                                    if isinstance(expires, str) and not expires.isdigit():
+                                        expires = '0'
+                                except:
+                                    expires = '0'
+                                    
+                                domain_prefix = 'TRUE' if domain.startswith('.') else 'FALSE'
+                                
+                                line = f"{domain}\t{domain_prefix}\t{path}\t{secure}\t{expires}\t{key}\t{morsel.value}"
+                                netscape_lines.append(line)
+                                
+                                if key in ('CAUTH', 'CSRF3-Token'):
+                                    found_auth = True
+                
+                config_dir = os.path.join(os.path.expanduser('~'), '.btk_ytube_downloader')
+                os.makedirs(config_dir, exist_ok=True)
+                cookie_path = os.path.join(config_dir, 'coursera_cookies.txt')
+                
+                with open(cookie_path, 'w', encoding='utf-8') as f:
+                    f.write("\n".join(netscape_lines))
+                
+                # Auto-set the cookies file for the next download
+                self._cookies_file = cookie_path
+                self.save_settings()
+                
+                # Update frontend
+                if found_auth:
+                    self._evaluate_js("window.onCourseraAuthResult(true);")
+                else:
+                    self._evaluate_js("window.onCourseraAuthResult(false);")
+                    
+            except Exception as e:
+                print(f"Error extracting cookies: {e}")
+                self._evaluate_js("window.onCourseraAuthResult(false);")
+                
+        login_win.events.closed += on_closed
+        return {'success': True}
+
     def _coursera_download_worker(self, download_id, slug_or_url, options):
         """
         Worker thread for downloading a Coursera course.

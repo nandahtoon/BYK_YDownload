@@ -1161,13 +1161,19 @@ function updateCookiesFileDisplay() {
                 }
             }
 
-            if (courseraStatusDiv) {
-                if (path) {
-                    courseraStatusDiv.innerText = `Active cookies: ${getBasename(path)}`;
-                    courseraStatusDiv.style.color = "var(--success)";
+            const authText = document.getElementById('coursera-auth-text');
+            const authDot = document.getElementById('coursera-auth-dot');
+
+            if (authText && authDot) {
+                if (path && getBasename(path) === 'coursera_cookies.txt') {
+                    authText.innerText = 'Authenticated (Auto-Detected)';
+                    authDot.className = 'status-dot success';
+                } else if (path) {
+                    authText.innerText = 'Authenticated (Custom File)';
+                    authDot.className = 'status-dot success';
                 } else {
-                    courseraStatusDiv.innerText = "No cookies file selected (Required for Coursera)";
-                    courseraStatusDiv.style.color = "var(--warning)";
+                    authText.innerText = 'Not Authenticated';
+                    authDot.className = 'status-dot error';
                 }
             }
         });
@@ -1192,9 +1198,42 @@ function clearCookiesFile() {
     }
 }
 
-function selectCourseraCookies() {
-    browseCookiesFile();
+function openCourseraLogin() {
+    const btn = document.getElementById('btn-coursera-login');
+    const text = document.getElementById('coursera-auth-text');
+    const dot = document.getElementById('coursera-auth-dot');
+    
+    if (btn) btn.disabled = true;
+    if (text) text.innerText = 'Waiting for login...';
+    if (dot) {
+        dot.className = 'status-dot warning';
+    }
+    
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.open_coursera_login();
+    }
 }
+
+window.onCourseraAuthResult = function(success) {
+    const btn = document.getElementById('btn-coursera-login');
+    const text = document.getElementById('coursera-auth-text');
+    const dot = document.getElementById('coursera-auth-dot');
+    
+    if (btn) btn.disabled = false;
+    
+    if (success) {
+        if (text) text.innerText = 'Authenticated';
+        if (dot) dot.className = 'status-dot success';
+        showToast("Successfully authenticated with Coursera!", "success");
+    } else {
+        if (text) text.innerText = 'Not Authenticated';
+        if (dot) dot.className = 'status-dot error';
+        showToast("Authentication failed or cancelled.", "error");
+    }
+    
+    // We update the general cookies display just in case
+    updateCookiesFileDisplay();
+};
 
 async function startCourseraDownload() {
     const urlInput = document.getElementById('coursera-url-input');
@@ -1208,7 +1247,7 @@ async function startCourseraDownload() {
     if (window.pywebview && window.pywebview.api) {
         const cookiesPath = await window.pywebview.api.get_cookies_file();
         if (!cookiesPath) {
-            showToast("Coursera download requires a Netscape cookies.txt file from coursera.org. Please select one first.", "error");
+            showToast("Coursera download requires authentication. Please click 'Login to Coursera' first.", "error");
             return;
         }
     }
