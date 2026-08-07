@@ -445,8 +445,39 @@ class YTDownloaderAPI:
         """
         import webview
         import os
+        import threading
+        import time
         
         login_win = webview.create_window('Login to Coursera', 'https://www.coursera.org/?authMode=login', width=600, height=700)
+        
+        def auto_close_if_authenticated():
+            # Wait a moment for window to initialize
+            time.sleep(3.0)
+            while True:
+                try:
+                    # Break if window is already closed by user or by us
+                    if login_win not in webview.windows:
+                        break
+                    
+                    cookies = self._window.get_cookies()
+                    cauth_found = False
+                    for chunk in cookies:
+                        if hasattr(chunk, 'items'):
+                            for key, morsel in chunk.items():
+                                if key == 'CAUTH' and 'coursera.org' in morsel.get('domain', ''):
+                                    cauth_found = True
+                                    break
+                        if cauth_found: break
+                    
+                    if cauth_found:
+                        print("[Coursera Auth] CAUTH cookie detected! Auto-closing login window to prevent redirect loops.")
+                        login_win.destroy()
+                        break
+                except Exception:
+                    pass
+                time.sleep(1.0)
+                
+        threading.Thread(target=auto_close_if_authenticated, daemon=True).start()
         
         def on_closed():
             print("[Coursera Auth] Login window closed. Extracting cookies...")
