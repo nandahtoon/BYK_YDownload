@@ -1934,3 +1934,26 @@ function renderSearchResults(results, container, inputEl, fetchCallback) {
         container.appendChild(card);
     });
 }
+
+
+function handleVideoSmartAction() {
+    const urlInput = document.getElementById('video-url-input');
+    const query = urlInput.value.trim();
+    if (!query) return;
+    if (query.startsWith('http://') || query.startsWith('https://') || query.startsWith('www.')) {
+        fetchVideo();
+    } else {
+        performYoutubeSearch();
+    }
+}
+
+function handlePlaylistSmartAction() {
+    const urlInput = document.getElementById('playlist-url-input');
+    const query = urlInput.value.trim();
+    if (!query) return;
+    if (query.startsWith('http://') || query.startsWith('https://') || query.startsWith('www.')) {
+        fetchPlaylist();
+    } else {
+        performPlaylistSearch();
+    }
+}
