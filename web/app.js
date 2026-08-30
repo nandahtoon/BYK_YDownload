@@ -1829,3 +1829,108 @@ function closeWindow() {
         window.pywebview.api.close_window();
     }
 }
+
+
+// --- YOUTUBE SEARCH LOGIC ---
+function performYoutubeSearch() {
+    const urlInput = document.getElementById('video-url-input');
+    const query = urlInput.value.trim();
+    if (!query) {
+        showToast('Please enter a search query', 'warning');
+        return;
+    }
+    const container = document.getElementById('youtube-search-results');
+    container.style.display = 'flex';
+    container.innerHTML = '<div class="spinner" style="margin: 1rem auto;"></div><p style="text-align: center;">Searching YouTube...</p>';
+    
+    window.pywebview.api.search_youtube(query, 10, false).then(response => {
+        if (response.success) {
+            renderSearchResults(response.results, container, urlInput, fetchVideo);
+        } else {
+            container.innerHTML = `<p style="color: var(--error); text-align: center;">Error: ${response.error}</p>`;
+        }
+    });
+}
+
+function performPlaylistSearch() {
+    const urlInput = document.getElementById('playlist-url-input');
+    const query = urlInput.value.trim();
+    if (!query) {
+        showToast('Please enter a search query', 'warning');
+        return;
+    }
+    const container = document.getElementById('playlist-search-results');
+    container.style.display = 'flex';
+    container.innerHTML = '<div class="spinner" style="margin: 1rem auto;"></div><p style="text-align: center;">Searching Playlists...</p>';
+    
+    window.pywebview.api.search_youtube(query, 10, true).then(response => {
+        if (response.success) {
+            renderSearchResults(response.results, container, urlInput, fetchPlaylist);
+        } else {
+            container.innerHTML = `<p style="color: var(--error); text-align: center;">Error: ${response.error}</p>`;
+        }
+    });
+}
+
+function renderSearchResults(results, container, inputEl, fetchCallback) {
+    container.innerHTML = '';
+    if (!results || results.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No results found.</p>';
+        return;
+    }
+    
+    results.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'search-result-card';
+        card.style.display = 'flex';
+        card.style.gap = '1rem';
+        card.style.padding = '0.75rem';
+        card.style.background = 'var(--bg-surface-2)';
+        card.style.borderRadius = 'var(--radius-md)';
+        card.style.cursor = 'pointer';
+        card.style.border = '1px solid transparent';
+        card.onmouseover = () => card.style.borderColor = 'var(--primary-color)';
+        card.onmouseout = () => card.style.borderColor = 'transparent';
+        
+        card.onclick = () => {
+            inputEl.value = item.url;
+            container.style.display = 'none';
+            fetchCallback();
+        };
+        
+        const thumb = document.createElement('img');
+        thumb.src = item.thumbnail || 'favicon.png';
+        thumb.style.width = '120px';
+        thumb.style.height = '68px';
+        thumb.style.objectFit = 'cover';
+        thumb.style.borderRadius = '4px';
+        
+        const info = document.createElement('div');
+        info.style.flex = '1';
+        info.style.display = 'flex';
+        info.style.flexDirection = 'column';
+        info.style.justifyContent = 'center';
+        
+        const title = document.createElement('div');
+        title.innerText = item.title || 'Unknown Title';
+        title.style.fontWeight = '600';
+        title.style.fontSize = '0.95rem';
+        title.style.color = 'var(--text-main)';
+        title.style.display = '-webkit-box';
+        title.style.webkitLineClamp = '2';
+        title.style.webkitBoxOrient = 'vertical';
+        title.style.overflow = 'hidden';
+        
+        const sub = document.createElement('div');
+        sub.innerText = `${item.uploader || 'Unknown'} • ${item.duration_string || ''}`;
+        sub.style.color = 'var(--text-muted)';
+        sub.style.fontSize = '0.8rem';
+        sub.style.marginTop = '4px';
+        
+        info.appendChild(title);
+        info.appendChild(sub);
+        card.appendChild(thumb);
+        card.appendChild(info);
+        container.appendChild(card);
+    });
+}

@@ -389,6 +389,59 @@ class YTDownloaderAPI:
                 'error': str(e)
             }
 
+
+    def search_youtube(self, query: str, limit: int = 10, is_playlist: bool = False):
+        import yt_dlp
+        
+        prefix = "ytsearch"
+        if is_playlist:
+            # yt-dlp doesn't have a direct "ytsearch_playlist" that reliably returns playlists in JSON.
+            # but we can try to filter, or just use regular search if it's too complex.
+            pass 
+        
+        search_query = f"ytsearch{limit}:{query}"
+        
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,
+            'dump_single_json': True,
+            'no_warnings': True,
+            'cookiesfrombrowser': ('chrome',),
+        }
+        
+        if self._cookies_file:
+            ydl_opts['cookiefile'] = self._cookies_file
+            
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(search_query, download=False)
+                
+            entries = info.get('entries', [])
+            results = []
+            for entry in entries:
+                duration_str = ''
+                duration = entry.get('duration')
+                if duration:
+                    m, s = divmod(duration, 60)
+                    h, m = divmod(m, 60)
+                    duration_str = f"{int(h)}:{int(m):02d}:{int(s):02d}" if h else f"{int(m)}:{int(s):02d}"
+                    
+                thumbnails = entry.get('thumbnails', [])
+                thumbnail = thumbnails[-1]['url'] if thumbnails else ''
+                
+                results.append({
+                    'id': entry.get('id', ''),
+                    'title': entry.get('title', ''),
+                    'url': entry.get('url', ''),
+                    'uploader': entry.get('uploader', ''),
+                    'duration_string': duration_str,
+                    'thumbnail': thumbnail
+                })
+                
+            return {'success': True, 'results': results}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
     def start_download(self, download_id, url, options):
         """
         Adds a video download task to the queue and processes it.
