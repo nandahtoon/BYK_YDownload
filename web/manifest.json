@@ -1,0 +1,16 @@
+{
+    "name": "SU Youtube Downloader",
+    "short_name": "YDownloader",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#111827",
+    "theme_color": "#a855f7",
+    "description": "A beautiful cross-platform YouTube and Coursera downloader.",
+    "icons": [
+        {
+            "src": "favicon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

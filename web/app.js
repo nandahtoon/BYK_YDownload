@@ -1,3 +1,54 @@
+
+// --- WEB/PWA ADAPTER ---
+// Automatically switches to REST API + WebSocket when running in a standard web browser
+if (typeof window.pywebview === 'undefined') {
+    console.log("[ Web Mode ] pywebview not found. Initializing Web Adapter...");
+    
+    // Create the global pywebview namespace
+    window.pywebview = {
+        api: {}
+    };
+    
+    // 1. E{tablish WebSocket for real-time progress events
+    let ws_protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    let ws_url = `${ws_protocol}//${window.location.host}/ws`;
+    const ws = new WebSocket(ws_url);
+    
+    ws.onmessage = function(event) {
+        try {
+            eval(event.data);
+        } catch (e) {
+            console.error("Error evaluating server script:", e);
+        }
+    };
+    ws.onerror = function(error) {
+        console.error("WebSocket Error:", error);
+    };
+    
+    // 2. Polyfill the API using fetch
+    const proxyHandler = {
+        get: function(target, prop) {
+            // Return an async function for any API method called
+            return async function(...args) {
+                try {
+                    const response = await fetch(`/api/${prop}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ args: args })
+                    });
+                    return await response.json();
+                } catch (e) {
+                    console.error(`API Call ${prop} failed:`, e);
+                    throw e;
+                }
+            };
+        }
+    };
+    
+    window.pywebview.api = new Proxy({}, proxyHandler);
+}
+// -----------------------
+
 // app.js - Frontend interactions and PyWebView bindings
 
 let currentDownloadDir = 'Downloads';
