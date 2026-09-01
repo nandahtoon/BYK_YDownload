@@ -2008,3 +2008,41 @@ function handlePlaylistSmartAction() {
         performPlaylistSearch();
     }
 }
+
+
+// --- ENGINE UPDATE ---
+function updateEngine() {
+    const label = document.getElementById("settings-engine-label");
+    label.innerText = "Updating engine... Please wait";
+    window.pywebview.api.update_ytdlp().then(res => {
+        if(res && !res.success) {
+            label.innerText = "Update failed.";
+        }
+    }).catch(e => {
+        label.innerText = "Error initiating update.";
+    });
+}
+
+
+
+function updateEngine() {
+    const label = document.getElementById('settings-engine-label');
+    label.innerText = 'Updating engine... Please wait';
+    window.pywebview.api.update_ytdlp().then(res => {
+        if(res && !res.success) {
+            label.innerText = 'Update failed.';
+        }
+    }).catch(e => {
+        label.innerText = 'Error initiating update.';
+    });
+}
+
+function loadEngineVersion() {
+    window.pywebview.api.get_engine_version().then(res => {
+        document.getElementById('settings-engine-label').innerText = 'v' + res;
+    });
+}
+
+window.addEventListener('load', function() {
+    setTimeout(loadEngineVersion, 1500);
+});
